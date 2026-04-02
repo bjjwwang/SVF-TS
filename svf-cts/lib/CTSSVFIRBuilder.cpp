@@ -1593,15 +1593,32 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
     // Binary expression
     if (strcmp(type, "binary_expression") == 0)
     {
+        // Check for && / || FIRST — handle before creating any nodes
+        TSNode opNode = ts_node_child(expr, 1);
+        std::string op = CTSParser::getNodeText(opNode, file->getSource());
+        if (op == "&&")
+        {
+            // Short-circuit: evaluate both sides for side effects,
+            // return rhs CmpStmt result as condVar for branch narrowing
+            TSNode left = ts_node_child_by_field_name(expr, "left", 4);
+            TSNode right = ts_node_child_by_field_name(expr, "right", 5);
+            getExprValue(left, file);   // side effects only
+            return getExprValue(right, file);  // condVar = rhs
+        }
+        if (op == "||")
+        {
+            TSNode left = ts_node_child_by_field_name(expr, "left", 4);
+            TSNode right = ts_node_child_by_field_name(expr, "right", 5);
+            NodeID lhsVal = getExprValue(left, file);
+            getExprValue(right, file);  // side effects only
+            return lhsVal;  // condVar = lhs
+        }
+
         TSNode left = ts_node_child_by_field_name(expr, "left", 4);
         TSNode right = ts_node_child_by_field_name(expr, "right", 5);
         NodeID lhsVal = getExprValue(left, file);
         NodeID rhsVal = getExprValue(right, file);
         NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
-
-        // Get operator string
-        TSNode opNode = ts_node_child(expr, 1);
-        std::string op = CTSParser::getNodeText(opNode, file->getSource());
 
         // Comparison operators → CmpStmt
         if (op == "==")
@@ -1638,11 +1655,7 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
             addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Shl);
         else if (op == ">>")
             addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::AShr);
-        // Logical operators (&&, ||) — model as bitwise AND/OR of boolean values
-        else if (op == "&&")
-            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::And);
-        else if (op == "||")
-            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Or);
+        // && and || handled above (early return before node creation)
         else
         {
             // Unknown operator: just copy from lhs as fallback
