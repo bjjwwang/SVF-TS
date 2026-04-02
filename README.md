@@ -1,6 +1,37 @@
 <img src="./docs/images/svf_logo_2.png" width="15%"><img src="./docs/images/svf_logo_3.png" width="85%">
 
 
+## SVF-TS Progress: Tree-Sitter C Frontend (Phase 1 — AE)
+
+**Target**: 108 ae\_assert\_tests from TS-TestSuite | **Current**: 66 / 108 (61%) | **Baseline**: 47 / 108 (43%)
+
+### Remaining Failures (42)
+
+| Category | Count | Root Cause | Status |
+|----------|-------|------------|--------|
+| `foo(&a)` — callee's store not visible to caller | 10 | PTA now correct (CallPE enters constraint graph). AE's `handleFunCall` copies callNode state to retNode but doesn't merge FunExit's store effects back to caller's memory objects. | PTA fixed, AE propagation TODO |
+| if/else + rand + constraint narrowing | 6 | Branch constraint narrowing works for single `if`. Compound conditions with external calls (rand/scanf) + if/else have store/load ordering issues in abstract state. | Partially fixed |
+| `&&` condition (`if(a>5 && a<7)`) | 5 | `&&` now returns rhs CmpStmt (approximate short-circuit). But only one-sided narrowing; full short-circuit needs nested ICFG branches. | Partially fixed |
+| External function memory effects (scanf/memset/memcpy) | 3 | These functions write to memory through pointer arguments. Not modeled. | TODO |
+| Cast truncation (`(int8_t)256 == 0`) | 1 | CopyStmt doesn't model integer truncation semantics. | TODO |
+| Array copy (`char s[2]={'A','B'}; s[1]`) | 1 | Initializer list partially supported but array element tracking imprecise. | TODO |
+| `if(nd())` — function call in condition | 6 | ICFG builder doesn't create CallICFGNode for calls inside if/while/for conditions. | TODO |
+| Complex C features (2D array, typedef struct, enum, macro) | 10 | Tree-Sitter parses these but SVFIR builder doesn't handle them. | TODO |
+
+### Key Fixes Applied
+
+1. **External call ICFG edges** — intra-edge instead of call/ret for external functions (matching LLVM frontend)
+2. **If-branch condition labeling** — fixed empty-body and unresolvable then-node cases
+3. **While/for loop branch conditions** — switch `currentICFGNode` to condNode before condition evaluation
+4. **CallPE/RetPE registration** — register on ICFGNode stmt list and CallCFGEdge/RetCFGEdge
+5. **Return value propagation** — create result node and StoreStmt on RetICFGNode, not CallICFGNode
+6. **External call return value** — no RetPE for externals; handleExtAPI sets actualRet directly
+7. **ArgValVar type** — use pointer type so CallPE enters Andersen's constraint graph
+8. **`&&`/`||` modeling** — return CmpStmt result instead of BinaryOPStmt::And
+9. **`true`/`false`/`NULL`** constants, char literals, hex/octal numbers, update expressions
+
+---
+
 ## News
 * <b>SVF now supports new [build system](https://github.com/SVF-tools/SVF/pull/1703) (Thank [Johannes](https://github.com/Johanmyst) for his help!). </b>
 * <b> [SVF-Python](https://github.com/SVF-tools/SVF-Python) is now available, enabling developers to write static analyzers in Python by leveraging the SVF library (Contributed by [Jiawei Wang](https://github.com/bjjwwang)). </b>
