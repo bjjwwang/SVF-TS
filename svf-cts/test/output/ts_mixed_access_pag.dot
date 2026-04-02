@@ -1,0 +1,30 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x634d9affb100 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x634d9b0001d0 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x634d9b000510 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n pts \{ \"ln\": 10, \"cl\": 18, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9b000510 -> Node0x634d9b0007c0[color=green];
+	Node0x634d9b0007c0 [shape=record,shape=box,label="{[main] ValVar ID: 10\n pts \{ \"ln\": 10, \"cl\": 18, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9b0007c0 -> Node0x634d9b0012e0[color=purple];
+	Node0x634d9b0007c0 -> Node0x634d9b0023d0[color=purple];
+	Node0x634d9b0007c0 -> Node0x634d9b003bd0[color=purple];
+	Node0x634d9b0012e0 [shape=record,shape=box,label="{[main] ValVar ID: 13\nnode_13}"];
+	Node0x634d9b0012e0 -> Node0x634d9b001880[color=purple];
+	Node0x634d9b001880 [shape=record,shape=box,label="{[main] ValVar ID: 14\nnode_14}"];
+	Node0x634d9b0023d0 [shape=record,shape=box,label="{[main] ValVar ID: 17\nnode_17}"];
+	Node0x634d9b0023d0 -> Node0x634d9b002890[color=purple];
+	Node0x634d9b002890 [shape=record,shape=box,label="{[main] ValVar ID: 18\nnode_18}"];
+	Node0x634d9b003070 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 19\n v \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9b003070 -> Node0x634d9b0033a0[color=green];
+	Node0x634d9b0033a0 [shape=record,shape=box,label="{[main] ValVar ID: 20\n v \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9b0033a0 -> Node0x634d9b004d20[color=red];
+	Node0x634d9b003bd0 [shape=record,shape=box,label="{[main] ValVar ID: 22\nnode_22}"];
+	Node0x634d9b003bd0 -> Node0x634d9b003f50[color=purple];
+	Node0x634d9b003f50 [shape=record,shape=box,label="{[main] ValVar ID: 23\nnode_23}"];
+	Node0x634d9b003f50 -> Node0x634d9b004450[color=red];
+	Node0x634d9b004450 [shape=record,shape=box,label="{[main] ValVar ID: 24\nnode_24}"];
+	Node0x634d9b004450 -> Node0x634d9b0033a0[color=blue];
+	Node0x634d9b004d20 [shape=record,shape=box,label="{[main] ValVar ID: 25\nnode_25}"];
+	Node0x634d9b004d20 -> Node0x634d9b0001d0[color=black];
+}

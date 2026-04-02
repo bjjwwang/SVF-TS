@@ -1,0 +1,30 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x566ce10e0f40 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x566ce10e5210 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x566ce10e5510 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e5510 -> Node0x566ce10e57b0[color=green];
+	Node0x566ce10e57b0 [shape=record,shape=box,label="{[main] ValVar ID: 10\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e57b0 -> Node0x566ce10e6e30[color=red];
+	Node0x566ce10e6500 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 12\n p \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e6500 -> Node0x566ce10e67a0[color=green];
+	Node0x566ce10e67a0 [shape=record,shape=box,label="{[main] ValVar ID: 13\n p \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e67a0 -> Node0x566ce10e7cc0[color=red];
+	Node0x566ce10e67a0 -> Node0x566ce10e8e50[color=red];
+	Node0x566ce10e6e30 [shape=record,shape=box,label="{[main] ValVar ID: 14\nnode_14}"];
+	Node0x566ce10e6e30 -> Node0x566ce10e7360[color=red];
+	Node0x566ce10e7360 [shape=record,shape=box,label="{[main] ValVar ID: 15\nnode_15}"];
+	Node0x566ce10e7360 -> Node0x566ce10e67a0[color=blue];
+	Node0x566ce10e7cc0 [shape=record,shape=box,label="{[main] ValVar ID: 17\nnode_17}"];
+	Node0x566ce10e8520 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 18\n y \{ \"ln\": 8, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e8520 -> Node0x566ce10e87c0[color=green];
+	Node0x566ce10e87c0 [shape=record,shape=box,label="{[main] ValVar ID: 19\n y \{ \"ln\": 8, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e87c0 -> Node0x566ce10e99a0[color=red];
+	Node0x566ce10e8e50 [shape=record,shape=box,label="{[main] ValVar ID: 20\nnode_20}"];
+	Node0x566ce10e8e50 -> Node0x566ce10e9220[color=red];
+	Node0x566ce10e9220 [shape=record,shape=box,label="{[main] ValVar ID: 21\nnode_21}"];
+	Node0x566ce10e9220 -> Node0x566ce10e87c0[color=blue];
+	Node0x566ce10e99a0 [shape=record,shape=box,label="{[main] ValVar ID: 22\nnode_22}"];
+	Node0x566ce10e99a0 -> Node0x566ce10e5210[color=black];
+}

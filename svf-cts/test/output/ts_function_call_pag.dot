@@ -1,0 +1,28 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x58d9cf684010 [shape=record,shape=box3d,label="{[foo] FunObjVar ID: 6 (base object)\nfoo}"];
+	Node0x58d9cf687150 [shape=record,shape=box,label="{[foo] ArgValVar ID: 7\n p \{ \"ln\": 4, \"cl\": 10, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}"];
+	Node0x58d9cf687150 -> Node0x58d9cf68a030[color=blue];
+	Node0x58d9cf687550 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 9 (base object)\nmain}"];
+	Node0x58d9cf689970 [shape=record,shape=box,label="{[foo] RetValPN ID: 11 unique return node for function foo|{<s0>CallICFGNode: \{ \"ln\": 10, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}}"];
+	Node0x58d9cf689970:s0 -> Node0x58d9cf68d210[color=black,style=dotted];
+	Node0x58d9cf689b20 [shape=record,shape=box,label="{[main] RetValPN ID: 12 unique return node for function main}"];
+	Node0x58d9cf689d80 [shape=record,shape=box3d,label="{StackObjVar ID: 13\n p_obj \{ \"ln\": 4, \"cl\": 10, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}"];
+	Node0x58d9cf689d80 -> Node0x58d9cf68a030[color=green];
+	Node0x58d9cf68a030 [shape=record,shape=box,label="{ValVar ID: 14\n p_addr \{ \"ln\": 4, \"cl\": 10, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}"];
+	Node0x58d9cf68a030 -> Node0x58d9cf68ac40[color=red];
+	Node0x58d9cf68ac40 [shape=record,shape=box,label="{[foo] ValVar ID: 16\nnode_16}"];
+	Node0x58d9cf68b620 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 17\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}"];
+	Node0x58d9cf68b620 -> Node0x58d9cf68b8d0[color=green];
+	Node0x58d9cf68b8d0 [shape=record,shape=box,label="{[main] ValVar ID: 18\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}"];
+	Node0x58d9cf68b8d0 -> Node0x58d9cf68c340[color=red];
+	Node0x58d9cf68b8d0 -> Node0x58d9cf68d7d0[color=red];
+	Node0x58d9cf68c340 [shape=record,shape=box,label="{[main] ValVar ID: 20\nnode_20}"];
+	Node0x58d9cf68c340 -> Node0x58d9cf68c890[color=red];
+	Node0x58d9cf68c890 [shape=record,shape=box,label="{[main] ValVar ID: 21\nnode_21|{<s0>CallICFGNode: \{ \"ln\": 10, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/function_call.c\" \}}}"];
+	Node0x58d9cf68c890:s0 -> Node0x58d9cf687150[color=black,style=dashed];
+	Node0x58d9cf68d210 [shape=record,shape=box,label="{[main] ValVar ID: 22\nnode_22}"];
+	Node0x58d9cf68d7d0 [shape=record,shape=box,label="{[main] ValVar ID: 23\nnode_23}"];
+	Node0x58d9cf68d7d0 -> Node0x58d9cf689b20[color=black];
+}

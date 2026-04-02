@@ -1,0 +1,30 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5e1b231a4ef0 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x5e1b231aa210 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x5e1b231aa4a0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n p \{ \"ln\": 7, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231aa4a0 -> Node0x5e1b231aa6c0[color=green];
+	Node0x5e1b231aa6c0 [shape=record,shape=box,label="{[main] ValVar ID: 10\n p \{ \"ln\": 7, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231aa6c0 -> Node0x5e1b231ac1f0[color=red];
+	Node0x5e1b231aa6c0 -> Node0x5e1b231ad340[color=red];
+	Node0x5e1b231aa6c0 -> Node0x5e1b231ade90[color=red];
+	Node0x5e1b231aaf20 [shape=record,shape=box3d,label="{[main] HeapObjVar ID: 11\n heap_obj \{ \"ln\": 7, \"cl\": 20, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231aaf20 -> Node0x5e1b231ab250[color=green];
+	Node0x5e1b231ab250 [shape=record,shape=box,label="{[main] ValVar ID: 12\n malloc_result \{ \"ln\": 7, \"cl\": 20, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231ab250 -> Node0x5e1b231ab730[color=black];
+	Node0x5e1b231ab730 [shape=record,shape=box,label="{[main] ValVar ID: 13\nnode_13}"];
+	Node0x5e1b231ab730 -> Node0x5e1b231aa6c0[color=blue];
+	Node0x5e1b231ac1f0 [shape=record,shape=box,label="{[main] ValVar ID: 15\nnode_15}"];
+	Node0x5e1b231acaf0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 16\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231acaf0 -> Node0x5e1b231acd10[color=green];
+	Node0x5e1b231acd10 [shape=record,shape=box,label="{[main] ValVar ID: 17\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231acd10 -> Node0x5e1b231ae4a0[color=red];
+	Node0x5e1b231ad340 [shape=record,shape=box,label="{[main] ValVar ID: 18\nnode_18}"];
+	Node0x5e1b231ad340 -> Node0x5e1b231ad710[color=red];
+	Node0x5e1b231ad710 [shape=record,shape=box,label="{[main] ValVar ID: 19\nnode_19}"];
+	Node0x5e1b231ad710 -> Node0x5e1b231acd10[color=blue];
+	Node0x5e1b231ade90 [shape=record,shape=box,label="{[main] ValVar ID: 20\nnode_20}"];
+	Node0x5e1b231ae4a0 [shape=record,shape=box,label="{[main] ValVar ID: 22\nnode_22}"];
+	Node0x5e1b231ae4a0 -> Node0x5e1b231aa210[color=black];
+}

@@ -1,0 +1,41 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x56e8cb809df0 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x56e8cb809df0 -> Node0x56e8cb7ef340[color=black];
+	Node0x56e8cb809df0 -> Node0x56e8cb7edd30[color=grey];
+	Node0x56e8cb809df0 -> Node0x56e8cb7f18e0[color=grey];
+	Node0x56e8cb7ef340 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x56e8cb8531f0 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x56e8cb7eb1f0 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x56e8cb7f1fd0 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x56e8cb7f1fd0 -> Node0x56e8cb7eb1f0[color=green];
+	Node0x56e8cb838c00 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x56e8cb7f50a0 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x56e8cb855b30 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x56e8cb855b30 -> Node0x56e8cb7f50a0[color=green];
+	Node0x56e8cb859a80 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %c = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb859a80 -> Node0x56e8cb805dd0[color=red];
+	Node0x56e8cb8220b0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %c = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb8220b0 -> Node0x56e8cb859a80[color=green];
+	Node0x56e8cb7de5d0 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %x = alloca i32, align 4 \{ \"ln\": 6, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7de5d0 -> Node0x56e8cb804db0[color=red];
+	Node0x56e8cb804ad0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %x = alloca i32, align 4 \{ \"ln\": 6, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb804ad0 -> Node0x56e8cb7de5d0[color=green];
+	Node0x56e8cb807990 [shape=record,shape=box,label="{[main] ValVar ID: 14\n   %y = alloca i32, align 4 \{ \"ln\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb807990 -> Node0x56e8cb7f2630[color=red];
+	Node0x56e8cb7f1b70 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 15\n   %y = alloca i32, align 4 \{ \"ln\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7f1b70 -> Node0x56e8cb807990[color=green];
+	Node0x56e8cb805dd0 [shape=record,shape=box,label="{[main] ValVar ID: 21\n   %0 = load i32, ptr %c, align 4, !dbg !20 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb805dd0 -> Node0x56e8cb838e20[color=grey];
+	Node0x56e8cb838e20 [shape=record,shape=box,label="{[main] ValVar ID: 22\n   %tobool = icmp ne i32 %0, 0, !dbg !20 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb838e20 -> Node0x56e8cb7ed0e0[color=grey];
+	Node0x56e8cb7ed0e0 [shape=record,shape=box,label="{[main] ValVar ID: 23\n   br i1 %tobool, label %if.then, label %if.else, !dbg !22 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7edd30 [shape=record,shape=box,label="{[main] ValVar ID: 25\n   br label %if.end, !dbg !25 \{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7f18e0 [shape=record,shape=box,label="{[main] ValVar ID: 29\n   br label %if.end }"];
+	Node0x56e8cb804db0 [shape=record,shape=box,label="{[main] ValVar ID: 31\n   %1 = load i32, ptr %x, align 4, !dbg !30 \{ \"ln\": 12, \"cl\": 13, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb804db0 -> Node0x56e8cb807990[color=blue];
+	Node0x56e8cb7f2630 [shape=record,shape=box,label="{[main] ValVar ID: 33\n   %2 = load i32, ptr %y, align 4, !dbg !31 \{ \"ln\": 13, \"cl\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7f2630 -> Node0x56e8cb838c00[color=grey];
+	Node0x56e8cb854be0 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 35\nllvm.dbg.declare}"];
+}

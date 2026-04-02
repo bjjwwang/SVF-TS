@@ -1,0 +1,28 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5c19a413c280 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x5c19a413c280 -> Node0x5c19a4164100[color=black];
+	Node0x5c19a4164100 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x5c19a40fb660 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x5c19a41303f0 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x5c19a40f5220 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x5c19a40f5220 -> Node0x5c19a41303f0[color=green];
+	Node0x5c19a4160120 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x5c19a4117910 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x5c19a412ffc0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x5c19a412ffc0 -> Node0x5c19a4117910[color=green];
+	Node0x5c19a4162a50 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %x = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a4162a50 -> Node0x5c19a41625f0[color=red];
+	Node0x5c19a4112a50 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %x = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a4112a50 -> Node0x5c19a4162a50[color=green];
+	Node0x5c19a410aa20 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %y = alloca i32, align 4 \{ \"ln\": 6, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a410aa20 -> Node0x5c19a4117ae0[color=red];
+	Node0x5c19a415fdc0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %y = alloca i32, align 4 \{ \"ln\": 6, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a415fdc0 -> Node0x5c19a410aa20[color=green];
+	Node0x5c19a41625f0 [shape=record,shape=box,label="{[main] ValVar ID: 19\n   %0 = load i32, ptr %x, align 4, !dbg !20 \{ \"ln\": 6, \"cl\": 13, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a41625f0 -> Node0x5c19a410aa20[color=blue];
+	Node0x5c19a4117ae0 [shape=record,shape=box,label="{[main] ValVar ID: 21\n   %1 = load i32, ptr %y, align 4, !dbg !21 \{ \"ln\": 7, \"cl\": 12, \"fl\": \"test/c_sources/simple_assign.c\" \}}"];
+	Node0x5c19a4117ae0 -> Node0x5c19a4160120[color=grey];
+	Node0x5c19a4102090 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 23\nllvm.dbg.declare}"];
+}

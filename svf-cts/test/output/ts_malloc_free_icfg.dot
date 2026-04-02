@@ -1,0 +1,19 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x5e1b231a5160 [shape=record,color=purple,label="{GlobalICFGNode0}"];
+	Node0x5e1b231a5160 -> Node0x5e1b231a8ca0[style=solid];
+	Node0x5e1b231a8ca0 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 6, \"cl\": 1, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}}"];
+	Node0x5e1b231a8ca0 -> Node0x5e1b231a8fc0[style=solid];
+	Node0x5e1b231a8e00 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}}"];
+	Node0x5e1b231a8fc0 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\{ \"ln\": 7, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}\nAddrStmt: [Var10 \<-- Var9]  \nValVar ID: 10\n p \{ \"ln\": 7, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\nAddrStmt: [Var12 \<-- Var11]  \nValVar ID: 12\n malloc_result \{ \"ln\": 7, \"cl\": 20, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\nCopyStmt: [Var13 \<-- Var12]  \nValVar ID: 13\nnode_13\nStoreStmt: [Var10 \<-- Var13]  \nValVar ID: 10\n p \{ \"ln\": 7, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231a8fc0 -> Node0x5e1b231a92a0[style=solid];
+	Node0x5e1b231a92a0 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 8, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var15 \<-- Var10]  \nValVar ID: 15\nnode_15\nStoreStmt: [Var15 \<-- Var14]  \nValVar ID: 15\nnode_15}"];
+	Node0x5e1b231a92a0 -> Node0x5e1b231a9550[style=solid];
+	Node0x5e1b231a9550 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 9, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}\nAddrStmt: [Var17 \<-- Var16]  \nValVar ID: 17\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\nLoadStmt: [Var18 \<-- Var10]  \nValVar ID: 18\nnode_18\nLoadStmt: [Var19 \<-- Var18]  \nValVar ID: 19\nnode_19\nStoreStmt: [Var17 \<-- Var19]  \nValVar ID: 17\n x \{ \"ln\": 9, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}}"];
+	Node0x5e1b231a9550 -> Node0x5e1b231a9800[style=solid];
+	Node0x5e1b231a9800 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\{ \"ln\": 10, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var20 \<-- Var10]  \nValVar ID: 20\nnode_20}"];
+	Node0x5e1b231a9800 -> Node0x5e1b231a9b10[style=solid];
+	Node0x5e1b231a9b10 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\{ \"ln\": 11, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var22 \<-- Var17]  \nValVar ID: 22\nnode_22\nCopyStmt: [Var8 \<-- Var22]  \nRetValPN ID: 8 unique return node for function main}"];
+	Node0x5e1b231a9b10 -> Node0x5e1b231a8e00[style=solid];
+}

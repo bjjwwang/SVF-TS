@@ -284,6 +284,7 @@ endif()
 
 add_subdirectory(svf)
 add_subdirectory(svf-llvm)
+add_subdirectory(svf-cts)
 
 # =================================================================================
 # SVF build configuration handling (post linking LLVM)

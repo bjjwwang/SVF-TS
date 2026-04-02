@@ -184,6 +184,7 @@ class SVFType
 {
 
     friend class LLVMModuleSet;
+    friend class CTSModuleSet;
 
 public:
     typedef s64_t GNodeK;
@@ -476,6 +477,7 @@ public:
 class SVFArrayType : public SVFType
 {
     friend class GraphDBClient;
+    friend class CTSSVFIRBuilder;
 
 protected:
     const unsigned getNumOfElement() const

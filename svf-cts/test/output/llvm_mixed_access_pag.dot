@@ -1,0 +1,40 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5c0eedc61f10 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x5c0eedc61f10 -> Node0x5c0eedc2ea20[color=black];
+	Node0x5c0eedc2ea20 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x5c0eedc62380 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x5c0eedc31190 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x5c0eedc2f890 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x5c0eedc2f890 -> Node0x5c0eedc31190[color=green];
+	Node0x5c0eedc52260 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x5c0eedc4c930 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x5c0eedc7c0a0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x5c0eedc7c0a0 -> Node0x5c0eedc4c930[color=green];
+	Node0x5c0eedc19c20 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %pts = alloca [3 x %struct.Point], align 16 \{ \"ln\": 10, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc19c20 -> Node0x5c0eedc1f040[color=purple];
+	Node0x5c0eedc19c20 -> Node0x5c0eedc30fc0[color=purple];
+	Node0x5c0eedc19c20 -> Node0x5c0eedc4b050[color=purple];
+	Node0x5c0eedc2dff0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %pts = alloca [3 x %struct.Point], align 16 \{ \"ln\": 10, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc2dff0 -> Node0x5c0eedc19c20[color=green];
+	Node0x5c0eedc308d0 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %v = alloca i32, align 4 \{ \"ln\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc308d0 -> Node0x5c0eedc18dc0[color=red];
+	Node0x5c0eedc58b70 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %v = alloca i32, align 4 \{ \"ln\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc58b70 -> Node0x5c0eedc308d0[color=green];
+	Node0x5c0eedc1f040 [shape=record,shape=box,label="{[main] ValVar ID: 17\n   %arrayidx = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !25 \{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc1f040 -> Node0x5c0eedc186d0[color=purple];
+	Node0x5c0eedc186d0 [shape=record,shape=box,label="{[main] ValVar ID: 19\n   %x = getelementptr inbounds %struct.Point, ptr %arrayidx, i32 0, i32 0, !dbg !26 \{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc30fc0 [shape=record,shape=box,label="{[main] ValVar ID: 21\n   %arrayidx1 = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !28 \{ \"ln\": 12, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc30fc0 -> Node0x5c0eedc18bf0[color=purple];
+	Node0x5c0eedc18bf0 [shape=record,shape=box,label="{[main] ValVar ID: 22\n   %y = getelementptr inbounds %struct.Point, ptr %arrayidx1, i32 0, i32 1, !dbg !29 \{ \"ln\": 12, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc4b050 [shape=record,shape=box,label="{[main] ValVar ID: 26\n   %arrayidx2 = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !33 \{ \"ln\": 13, \"cl\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc4b050 -> Node0x5c0eedc49e40[color=purple];
+	Node0x5c0eedc49e40 [shape=record,shape=box,label="{[main] ValVar ID: 27\n   %x3 = getelementptr inbounds %struct.Point, ptr %arrayidx2, i32 0, i32 0, !dbg !34 \{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc49e40 -> Node0x5c0eedc18960[color=red];
+	Node0x5c0eedc18960 [shape=record,shape=box,label="{[main] ValVar ID: 28\n   %0 = load i32, ptr %x3, align 16, !dbg !34 \{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc18960 -> Node0x5c0eedc308d0[color=blue];
+	Node0x5c0eedc18dc0 [shape=record,shape=box,label="{[main] ValVar ID: 30\n   %1 = load i32, ptr %v, align 4, !dbg !35 \{ \"ln\": 14, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc18dc0 -> Node0x5c0eedc52260[color=grey];
+	Node0x5c0eedc0d190 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 32\nllvm.dbg.declare}"];
+}

@@ -1,0 +1,44 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x56e8cb80a270 [shape=record,color=purple,label="{GlobalICFGNode0\nCopyStmt: [Var1 \<-- Var0]  \nConstNullPtrValVar ID: 0\n ptr null \{ constant data \}\nAddrStmt: [Var17 \<-- Var3]  \nConstIntValVar ID: 17\n i32 0 \{ constant data \}\nAddrStmt: [Var28 \<-- Var3]  \nConstIntValVar ID: 28\n i32 2 \{ constant data \}\nAddrStmt: [Var9 \<-- Var3]  \nConstIntValVar ID: 9\n i32 1 \{ constant data \}\nAddrStmt: [Var4 \<-- Var5]  \nFunValVar ID: 4\nmain\nAddrStmt: [Var35 \<-- Var36]  \nFunValVar ID: 35\nllvm.dbg.declare}"];
+	Node0x56e8cb80a270 -> Node0x56e8cb84c9a0[style=solid];
+	Node0x56e8cb84c9a0 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 4, \"file\": \"test/c_sources/control_flow.c\" \}\}}"];
+	Node0x56e8cb84c9a0 -> Node0x56e8cb832e70[style=solid];
+	Node0x56e8cb806c80 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\{ \"ln\": 12, \"cl\": 13, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nPhiStmt: [Var6 \<-- ([Var33, ICFGNode19],)]  \nValVar ID: 34\n   ret i32 %2, !dbg !32 \{ \"ln\": 13, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb832e70 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\}\nAddrStmt: [Var7 \<-- Var8]  \nValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x56e8cb832e70 -> Node0x56e8cb8598f0[style=solid];
+	Node0x56e8cb8598f0 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n   %c = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb8598f0 -> Node0x56e8cb8597a0[style=solid];
+	Node0x56e8cb8597a0 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 6, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var12 \<-- Var13]  \nValVar ID: 12\n   %x = alloca i32, align 4 \{ \"ln\": 6, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb8597a0 -> Node0x56e8cb852b80[style=solid];
+	Node0x56e8cb852b80 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\{ \"ln\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var14 \<-- Var15]  \nValVar ID: 14\n   %y = alloca i32, align 4 \{ \"ln\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb852b80 -> Node0x56e8cb82aa20[style=solid];
+	Node0x56e8cb82aa20 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\}\nStoreStmt: [Var7 \<-- Var17]  \nValVar ID: 16\n   store i32 0, ptr %retval, align 4 }"];
+	Node0x56e8cb82aa20 -> Node0x56e8cb854fc0[style=solid];
+	Node0x56e8cb854fc0 [shape=record,color=black,label="{IntraICFGNode8 \{fun: main\{ \"ln\": 5, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nStoreStmt: [Var10 \<-- Var9]  \nValVar ID: 19\n   store i32 1, ptr %c, align 4, !dbg !17 \{ \"ln\": 5, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb854fc0 -> Node0x56e8cb7f5920[style=solid];
+	Node0x56e8cb7f5920 [shape=record,color=black,label="{IntraICFGNode9 \{fun: main\{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nLoadStmt: [Var21 \<-- Var10]  \nValVar ID: 21\n   %0 = load i32, ptr %c, align 4, !dbg !20 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7f5920 -> Node0x56e8cb806370[style=solid];
+	Node0x56e8cb806370 [shape=record,color=black,label="{IntraICFGNode10 \{fun: main\{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nCmpStmt: [Var22 \<-- (Var21 predicate33 Var17)]  \nValVar ID: 22\n   %tobool = icmp ne i32 %0, 0, !dbg !20 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb806370 -> Node0x56e8cb80b870[style=solid];
+	Node0x56e8cb80b870 [shape=record,color=black,label="{IntraICFGNode11 \{fun: main\{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nBranchStmt: [Condition Var22]\nSuccessor 0 ICFGNode12   Successor 1 ICFGNode13   \nValVar ID: 23\n   br i1 %tobool, label %if.then, label %if.else, !dbg !22 \{ \"ln\": 7, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb80b870 -> Node0x56e8cb7fe690[style=solid];
+	Node0x56e8cb80b870 -> Node0x56e8cb82ec90[style=solid];
+	Node0x56e8cb7fe690 [shape=record,color=black,label="{IntraICFGNode12 \{fun: main\{ \"ln\": 8, \"cl\": 11, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nStoreStmt: [Var12 \<-- Var9]  \nValVar ID: 24\n   store i32 1, ptr %x, align 4, !dbg !23 \{ \"ln\": 8, \"cl\": 11, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7fe690 -> Node0x56e8cb82ee00[style=solid];
+	Node0x56e8cb82ec90 [shape=record,color=black,label="{IntraICFGNode13 \{fun: main\{ \"ln\": 10, \"cl\": 11, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nStoreStmt: [Var12 \<-- Var28]  \nValVar ID: 27\n   store i32 2, ptr %x, align 4, !dbg !26 \{ \"ln\": 10, \"cl\": 11, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb82ec90 -> Node0x56e8cb856ba0[style=solid];
+	Node0x56e8cb82ee00 [shape=record,color=black,label="{IntraICFGNode14 \{fun: main\{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nBranchStmt: [ Unconditional branch]\nSuccessor 0 ICFGNode16   \nValVar ID: 25\n   br label %if.end, !dbg !25 \{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb82ee00 -> Node0x56e8cb7f1140[style=solid];
+	Node0x56e8cb856ba0 [shape=record,color=black,label="{IntraICFGNode15 \{fun: main\}\nBranchStmt: [ Unconditional branch]\nSuccessor 0 ICFGNode16   \nValVar ID: 29\n   br label %if.end }"];
+	Node0x56e8cb856ba0 -> Node0x56e8cb7f1140[style=solid];
+	Node0x56e8cb7f1140 [shape=record,color=black,label="{IntraICFGNode16 \{fun: main\{ \"ln\": 12, \"cl\": 13, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nLoadStmt: [Var31 \<-- Var12]  \nValVar ID: 31\n   %1 = load i32, ptr %x, align 4, !dbg !30 \{ \"ln\": 12, \"cl\": 13, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7f1140 -> Node0x56e8cb815eb0[style=solid];
+	Node0x56e8cb815eb0 [shape=record,color=black,label="{IntraICFGNode17 \{fun: main\{ \"ln\": 12, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nStoreStmt: [Var14 \<-- Var31]  \nValVar ID: 32\n   store i32 %1, ptr %y, align 4, !dbg !29 \{ \"ln\": 12, \"cl\": 9, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb815eb0 -> Node0x56e8cb809fc0[style=solid];
+	Node0x56e8cb809fc0 [shape=record,color=black,label="{IntraICFGNode18 \{fun: main\{ \"ln\": 13, \"cl\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}\}\nLoadStmt: [Var33 \<-- Var14]  \nValVar ID: 33\n   %2 = load i32, ptr %y, align 4, !dbg !31 \{ \"ln\": 13, \"cl\": 12, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb809fc0 -> Node0x56e8cb7eb460[style=solid];
+	Node0x56e8cb7eb460 [shape=record,color=black,label="{IntraICFGNode19 \{fun: main\{ \"ln\": 13, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}\}\n   ret i32 %2, !dbg !32 \{ \"ln\": 13, \"cl\": 5, \"fl\": \"test/c_sources/control_flow.c\" \}}"];
+	Node0x56e8cb7eb460 -> Node0x56e8cb806c80[style=solid];
+}

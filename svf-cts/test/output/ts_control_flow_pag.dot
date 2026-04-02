@@ -1,0 +1,23 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x60d28067ff40 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x60d280685060 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x60d280685360 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n c \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280685360 -> Node0x60d280685610[color=green];
+	Node0x60d280685610 [shape=record,shape=box,label="{[main] ValVar ID: 10\n c \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280685610 -> Node0x60d280686c70[color=red];
+	Node0x60d280686320 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 12\n x \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280686320 -> Node0x60d2806865d0[color=green];
+	Node0x60d2806865d0 [shape=record,shape=box,label="{[main] ValVar ID: 13\n x \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d2806865d0 -> Node0x60d280688110[color=red];
+	Node0x60d280686c70 [shape=record,shape=box,label="{[main] ValVar ID: 14\nnode_14}"];
+	Node0x60d2806877c0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 16\n y \{ \"ln\": 12, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d2806877c0 -> Node0x60d280687a70[color=green];
+	Node0x60d280687a70 [shape=record,shape=box,label="{[main] ValVar ID: 17\n y \{ \"ln\": 12, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280687a70 -> Node0x60d280688900[color=red];
+	Node0x60d280688110 [shape=record,shape=box,label="{[main] ValVar ID: 18\nnode_18}"];
+	Node0x60d280688110 -> Node0x60d280687a70[color=blue];
+	Node0x60d280688900 [shape=record,shape=box,label="{[main] ValVar ID: 19\nnode_19}"];
+	Node0x60d280688900 -> Node0x60d280685060[color=black];
+}

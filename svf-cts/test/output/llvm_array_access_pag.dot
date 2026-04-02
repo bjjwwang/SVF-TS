@@ -1,0 +1,34 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x63492c600930 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x63492c600930 -> Node0x63492c600f70[color=black];
+	Node0x63492c600f70 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x63492c6268e0 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x63492c5f8d80 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x63492c627320 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x63492c627320 -> Node0x63492c5f8d80[color=green];
+	Node0x63492c6175c0 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x63492c619770 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x63492c62dac0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x63492c62dac0 -> Node0x63492c619770[color=green];
+	Node0x63492c5c1e40 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %arr = alloca [5 x i32], align 16 \{ \"ln\": 5, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c5c1e40 -> Node0x63492c629220[color=purple];
+	Node0x63492c5c1e40 -> Node0x63492c5c28e0[color=purple];
+	Node0x63492c5c1e40 -> Node0x63492c5b3bc0[color=purple];
+	Node0x63492c61a440 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %arr = alloca [5 x i32], align 16 \{ \"ln\": 5, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c61a440 -> Node0x63492c5c1e40[color=green];
+	Node0x63492c625a00 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %x = alloca i32, align 4 \{ \"ln\": 8, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c625a00 -> Node0x63492c6096a0[color=red];
+	Node0x63492c5c2010 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %x = alloca i32, align 4 \{ \"ln\": 8, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c5c2010 -> Node0x63492c625a00[color=green];
+	Node0x63492c629220 [shape=record,shape=box,label="{[main] ValVar ID: 17\n   %arrayidx = getelementptr inbounds [5 x i32], ptr %arr, i64 0, i64 0, !dbg !21 \{ \"ln\": 6, \"cl\": 5, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c5c28e0 [shape=record,shape=box,label="{[main] ValVar ID: 21\n   %arrayidx1 = getelementptr inbounds [5 x i32], ptr %arr, i64 0, i64 2, !dbg !23 \{ \"ln\": 7, \"cl\": 5, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c5b3bc0 [shape=record,shape=box,label="{[main] ValVar ID: 26\n   %arrayidx2 = getelementptr inbounds [5 x i32], ptr %arr, i64 0, i64 0, !dbg !27 \{ \"ln\": 8, \"cl\": 13, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c5b3bc0 -> Node0x63492c626120[color=red];
+	Node0x63492c626120 [shape=record,shape=box,label="{[main] ValVar ID: 27\n   %0 = load i32, ptr %arrayidx2, align 16, !dbg !27 \{ \"ln\": 8, \"cl\": 13, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c626120 -> Node0x63492c625a00[color=blue];
+	Node0x63492c6096a0 [shape=record,shape=box,label="{[main] ValVar ID: 29\n   %1 = load i32, ptr %x, align 4, !dbg !28 \{ \"ln\": 9, \"cl\": 12, \"fl\": \"test/c_sources/array_access.c\" \}}"];
+	Node0x63492c6096a0 -> Node0x63492c6175c0[color=grey];
+	Node0x63492c601cd0 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 31\nllvm.dbg.declare}"];
+}

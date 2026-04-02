@@ -1,0 +1,43 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x56555f651090 [shape=record,color=purple,label="{GlobalICFGNode0\nCopyStmt: [Var1 \<-- Var0]  \nConstNullPtrValVar ID: 0\n ptr null \{ constant data \}\nAddrStmt: [Var25 \<-- Var3]  \nConstIntValVar ID: 25\n i32 42 \{ constant data \}\nAddrStmt: [Var15 \<-- Var3]  \nConstIntValVar ID: 15\n i32 0 \{ constant data \}\nAddrStmt: [Var19 \<-- Var3]  \nConstIntValVar ID: 19\n i64 4 \{ constant data \}\nAddrStmt: [Var9 \<-- Var3]  \nConstIntValVar ID: 9\n i32 1 \{ constant data \}\nAddrStmt: [Var4 \<-- Var5]  \nFunValVar ID: 4\nmain\nAddrStmt: [Var36 \<-- Var37]  \nFunValVar ID: 36\nllvm.dbg.declare\nAddrStmt: [Var20 \<-- Var21]  \nFunValVar ID: 20\nmalloc\nAddrStmt: [Var32 \<-- Var33]  \nFunValVar ID: 32\nfree}"];
+	Node0x56555f651090 -> Node0x56555f65ad30[style=solid];
+	Node0x56555f65ad30 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 6, \"file\": \"test/c_sources/malloc_free.c\" \}\}}"];
+	Node0x56555f65ad30 -> Node0x56555f669850[style=solid];
+	Node0x56555f629fb0 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}\nPhiStmt: [Var6 \<-- ([Var34, ICFGNode19],)]  \nValVar ID: 35\n   ret i32 %4, !dbg !30 \{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f669850 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\}\nAddrStmt: [Var7 \<-- Var8]  \nValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x56555f669850 -> Node0x56555f64cce0[style=solid];
+	Node0x56555f64cce0 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 7, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nAddrStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n   %p = alloca ptr, align 8 \{ \"ln\": 7, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64cce0 -> Node0x56555f69f440[style=solid];
+	Node0x56555f69f440 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nAddrStmt: [Var12 \<-- Var13]  \nValVar ID: 12\n   %x = alloca i32, align 4 \{ \"ln\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f69f440 -> Node0x56555f69df10[style=solid];
+	Node0x56555f69df10 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\}\nStoreStmt: [Var7 \<-- Var15]  \nValVar ID: 14\n   store i32 0, ptr %retval, align 4 }"];
+	Node0x56555f69df10 -> Node0x56555f5d9c90[style=solid];
+	Node0x56555f5d9c90 [shape=record,color=red,label="{CallICFGNode7 \{fun: main\{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nAddrStmt: [Var17 \<-- Var18]  \nValVar ID: 17\n   %call = call noalias ptr @malloc(i64 noundef 4) #4, !dbg !20 \{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f5d9c90 -> Node0x56555f671470[style=solid];
+	Node0x56555f671470 [shape=record,color=blue,label="{RetICFGNode8 \{fun: main\{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\n   %call = call noalias ptr @malloc(i64 noundef 4) #4, !dbg !20 RetICFGNode: \{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f671470 -> Node0x56555f63c000[style=solid];
+	Node0x56555f63c000 [shape=record,color=black,label="{IntraICFGNode9 \{fun: main\{ \"ln\": 7, \"cl\": 10, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nStoreStmt: [Var10 \<-- Var17]  \nValVar ID: 22\n   store ptr %call, ptr %p, align 8, !dbg !19 \{ \"ln\": 7, \"cl\": 10, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f63c000 -> Node0x56555f64b060[style=solid];
+	Node0x56555f64b060 [shape=record,color=black,label="{IntraICFGNode10 \{fun: main\{ \"ln\": 8, \"cl\": 6, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var23 \<-- Var10]  \nValVar ID: 23\n   %0 = load ptr, ptr %p, align 8, !dbg !21 \{ \"ln\": 8, \"cl\": 6, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64b060 -> Node0x56555f635500[style=solid];
+	Node0x56555f635500 [shape=record,color=black,label="{IntraICFGNode11 \{fun: main\{ \"ln\": 8, \"cl\": 8, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nStoreStmt: [Var23 \<-- Var25]  \nValVar ID: 24\n   store i32 42, ptr %0, align 4, !dbg !22 \{ \"ln\": 8, \"cl\": 8, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f635500 -> Node0x56555f64c6f0[style=solid];
+	Node0x56555f64c6f0 [shape=record,color=black,label="{IntraICFGNode12 \{fun: main\{ \"ln\": 9, \"cl\": 14, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var27 \<-- Var10]  \nValVar ID: 27\n   %1 = load ptr, ptr %p, align 8, !dbg !25 \{ \"ln\": 9, \"cl\": 14, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64c6f0 -> Node0x56555f64bb80[style=solid];
+	Node0x56555f64bb80 [shape=record,color=black,label="{IntraICFGNode13 \{fun: main\{ \"ln\": 9, \"cl\": 13, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var28 \<-- Var27]  \nValVar ID: 28\n   %2 = load i32, ptr %1, align 4, !dbg !26 \{ \"ln\": 9, \"cl\": 13, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64bb80 -> Node0x56555f69c9b0[style=solid];
+	Node0x56555f69c9b0 [shape=record,color=black,label="{IntraICFGNode14 \{fun: main\{ \"ln\": 9, \"cl\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nStoreStmt: [Var12 \<-- Var28]  \nValVar ID: 29\n   store i32 %2, ptr %x, align 4, !dbg !24 \{ \"ln\": 9, \"cl\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f69c9b0 -> Node0x56555f636b80[style=solid];
+	Node0x56555f636b80 [shape=record,color=black,label="{IntraICFGNode15 \{fun: main\{ \"ln\": 10, \"cl\": 10, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var30 \<-- Var10]  \nValVar ID: 30\n   %3 = load ptr, ptr %p, align 8, !dbg !27 \{ \"ln\": 10, \"cl\": 10, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f636b80 -> Node0x56555f6a07f0[style=solid];
+	Node0x56555f6a07f0 [shape=record,color=red,label="{CallICFGNode16 \{fun: main\{ \"ln\": 10, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\n   call void @free(ptr noundef %3) #5, !dbg !28 CallICFGNode: \{ \"ln\": 10, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6a07f0 -> Node0x56555f6264e0[style=solid];
+	Node0x56555f6264e0 [shape=record,color=blue,label="{RetICFGNode17 \{fun: main\{ \"ln\": 10, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\n   call void @free(ptr noundef %3) #5, !dbg !28 RetICFGNode: \{ \"ln\": 10, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6264e0 -> Node0x56555f651570[style=solid];
+	Node0x56555f651570 [shape=record,color=black,label="{IntraICFGNode18 \{fun: main\{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\nLoadStmt: [Var34 \<-- Var12]  \nValVar ID: 34\n   %4 = load i32, ptr %x, align 4, !dbg !29 \{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f651570 -> Node0x56555f6273e0[style=solid];
+	Node0x56555f6273e0 [shape=record,color=black,label="{IntraICFGNode19 \{fun: main\{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}\}\n   ret i32 %4, !dbg !30 \{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6273e0 -> Node0x56555f629fb0[style=solid];
+}

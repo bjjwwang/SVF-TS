@@ -75,6 +75,7 @@ class SVFBasicBlock : public GenericBasicBlockNodeTy
     friend class ICFGBuilder;
     friend class ICFG;
     friend class GraphDBClient;
+    friend class CTSICFGBuilder;
 
 public:
     typedef std::vector<const ICFGNode*>::const_iterator const_iterator;

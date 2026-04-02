@@ -1,0 +1,33 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5f4885676840 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x5f4885676840 -> Node0x5f48856769b0[color=black];
+	Node0x5f48856769b0 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x5f488569e8d0 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x5f4885652550 [shape=record,shape=box,label="{[foo] FunValVar ID: 4\nfoo}"];
+	Node0x5f48856890f0 [shape=record,shape=box3d,label="{[foo] FunObjVar ID: 5 (base object)\nfoo}"];
+	Node0x5f48856890f0 -> Node0x5f4885652550[color=green];
+	Node0x5f4885682910 [shape=record,shape=box,label="{[foo] ArgValVar ID: 7\n ptr %p \{ 0th arg foo \"ln\": 4, \"file\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f4885682910 -> Node0x5f4885651fb0[color=blue];
+	Node0x5f4885651fb0 [shape=record,shape=box,label="{[foo] ValVar ID: 8\n   %p.addr = alloca ptr, align 8 \{ \"ln\": 4, \"fl\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f4885651fb0 -> Node0x5f488563ccb0[color=red];
+	Node0x5f488569a9b0 [shape=record,shape=box3d,label="{[foo] StackObjVar ID: 9\n   %p.addr = alloca ptr, align 8 \{ \"ln\": 4, \"fl\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f488569a9b0 -> Node0x5f4885651fb0[color=green];
+	Node0x5f488563ccb0 [shape=record,shape=box,label="{[foo] ValVar ID: 13\n   %0 = load ptr, ptr %p.addr, align 8, !dbg !19 \{ \"ln\": 5, \"cl\": 6, \"fl\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f48856a1e50 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 16\nllvm.dbg.declare}"];
+	Node0x5f4885631c80 [shape=record,shape=box,label="{[main] FunValVar ID: 22\nmain}"];
+	Node0x5f4885644860 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 23 (base object)\nmain}"];
+	Node0x5f4885644860 -> Node0x5f4885631c80[color=green];
+	Node0x5f4885652380 [shape=record,shape=box,label="{[main] RetValPN ID: 24 unique return node for function main}"];
+	Node0x5f488563aa30 [shape=record,shape=box,label="{[main] ValVar ID: 25\n   %retval = alloca i32, align 4 }"];
+	Node0x5f4885653030 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 26\n   %retval = alloca i32, align 4 }"];
+	Node0x5f4885653030 -> Node0x5f488563aa30[color=green];
+	Node0x5f488564ba20 [shape=record,shape=box,label="{[main] ValVar ID: 27\n   %x = alloca i32, align 4 \{ \"ln\": 9, \"fl\": \"test/c_sources/function_call.c\" \}|{|<s1>CallICFGNode: \{ \"ln\": 10, \"cl\": 5, \"fl\": \"test/c_sources/function_call.c\" \}}}"];
+	Node0x5f488564ba20 -> Node0x5f4885639260[color=red];
+	Node0x5f488564ba20:s1 -> Node0x5f4885682910[color=black,style=dashed];
+	Node0x5f488564e120 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 28\n   %x = alloca i32, align 4 \{ \"ln\": 9, \"fl\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f488564e120 -> Node0x5f488564ba20[color=green];
+	Node0x5f4885639260 [shape=record,shape=box,label="{[main] ValVar ID: 34\n   %0 = load i32, ptr %x, align 4, !dbg !19 \{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/function_call.c\" \}}"];
+	Node0x5f4885639260 -> Node0x5f4885652380[color=grey];
+}

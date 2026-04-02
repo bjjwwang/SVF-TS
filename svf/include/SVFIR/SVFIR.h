@@ -48,6 +48,7 @@ class SVFIR : public IRGraph
     friend class BVDataPTAImpl;
     friend class GraphDBClient;
     friend class GraphDBSVFIRBuilder;
+    friend class CTSSVFIRBuilder;
 
 public:
     typedef Set<const CallICFGNode*> CallSiteSet;

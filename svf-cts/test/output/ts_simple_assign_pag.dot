@@ -1,0 +1,18 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x60be5897afe0 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x60be5897e5a0 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x60be5897e8a0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/simple_assign.c\" \}}"];
+	Node0x60be5897e8a0 -> Node0x60be5897eb50[color=green];
+	Node0x60be5897eb50 [shape=record,shape=box,label="{[main] ValVar ID: 10\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/simple_assign.c\" \}}"];
+	Node0x60be5897eb50 -> Node0x60be589801b0[color=red];
+	Node0x60be5897f860 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 12\n y \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/simple_assign.c\" \}}"];
+	Node0x60be5897f860 -> Node0x60be5897fb10[color=green];
+	Node0x60be5897fb10 [shape=record,shape=box,label="{[main] ValVar ID: 13\n y \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/simple_assign.c\" \}}"];
+	Node0x60be5897fb10 -> Node0x60be58980a40[color=red];
+	Node0x60be589801b0 [shape=record,shape=box,label="{[main] ValVar ID: 14\nnode_14}"];
+	Node0x60be589801b0 -> Node0x60be5897fb10[color=blue];
+	Node0x60be58980a40 [shape=record,shape=box,label="{[main] ValVar ID: 15\nnode_15}"];
+	Node0x60be58980a40 -> Node0x60be5897e5a0[color=black];
+}

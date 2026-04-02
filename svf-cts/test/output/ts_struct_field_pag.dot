@@ -1,0 +1,24 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5afc87f61100 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 6 (base object)\nmain}"];
+	Node0x5afc87f65d40 [shape=record,shape=box,label="{[main] RetValPN ID: 8 unique return node for function main}"];
+	Node0x5afc87f66040 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 9\n s \{ \"ln\": 10, \"cl\": 14, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/struct_field.c\" \}}"];
+	Node0x5afc87f66040 -> Node0x5afc87f662f0[color=green];
+	Node0x5afc87f662f0 [shape=record,shape=box,label="{[main] ValVar ID: 10\n s \{ \"ln\": 10, \"cl\": 14, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/struct_field.c\" \}}"];
+	Node0x5afc87f662f0 -> Node0x5afc87f66c80[color=purple];
+	Node0x5afc87f662f0 -> Node0x5afc87f67710[color=purple];
+	Node0x5afc87f662f0 -> Node0x5afc87f687b0[color=purple];
+	Node0x5afc87f66c80 [shape=record,shape=box,label="{[main] ValVar ID: 12\nnode_12}"];
+	Node0x5afc87f67710 [shape=record,shape=box,label="{[main] ValVar ID: 14\nnode_14}"];
+	Node0x5afc87f67e60 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 15\n z \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/struct_field.c\" \}}"];
+	Node0x5afc87f67e60 -> Node0x5afc87f68110[color=green];
+	Node0x5afc87f68110 [shape=record,shape=box,label="{[main] ValVar ID: 16\n z \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/struct_field.c\" \}}"];
+	Node0x5afc87f68110 -> Node0x5afc87f693a0[color=red];
+	Node0x5afc87f687b0 [shape=record,shape=box,label="{[main] ValVar ID: 17\nnode_17}"];
+	Node0x5afc87f687b0 -> Node0x5afc87f68b30[color=red];
+	Node0x5afc87f68b30 [shape=record,shape=box,label="{[main] ValVar ID: 18\nnode_18}"];
+	Node0x5afc87f68b30 -> Node0x5afc87f68110[color=blue];
+	Node0x5afc87f693a0 [shape=record,shape=box,label="{[main] ValVar ID: 19\nnode_19}"];
+	Node0x5afc87f693a0 -> Node0x5afc87f65d40[color=black];
+}

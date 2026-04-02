@@ -1,0 +1,41 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x5c0eedc33f30 [shape=record,color=purple,label="{GlobalICFGNode0\nCopyStmt: [Var1 \<-- Var0]  \nConstNullPtrValVar ID: 0\n ptr null \{ constant data \}\nAddrStmt: [Var9 \<-- Var3]  \nConstIntValVar ID: 9\n i32 1 \{ constant data \}\nAddrStmt: [Var15 \<-- Var3]  \nConstIntValVar ID: 15\n i32 0 \{ constant data \}\nAddrStmt: [Var24 \<-- Var3]  \nConstIntValVar ID: 24\n i32 2 \{ constant data \}\nAddrStmt: [Var18 \<-- Var3]  \nConstIntValVar ID: 18\n i64 0 \{ constant data \}\nAddrStmt: [Var4 \<-- Var5]  \nFunValVar ID: 4\nmain\nAddrStmt: [Var32 \<-- Var33]  \nFunValVar ID: 32\nllvm.dbg.declare}"];
+	Node0x5c0eedc33f30 -> Node0x5c0eedc58e00[style=solid];
+	Node0x5c0eedc58e00 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 9, \"file\": \"test/c_sources/mixed_access.c\" \}\}}"];
+	Node0x5c0eedc58e00 -> Node0x5c0eedc78ed0[style=solid];
+	Node0x5c0eedc0f620 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}\nPhiStmt: [Var6 \<-- ([Var30, ICFGNode18],)]  \nValVar ID: 31\n   ret i32 %1, !dbg !36 \{ \"ln\": 14, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc78ed0 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\}\nAddrStmt: [Var7 \<-- Var8]  \nValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x5c0eedc78ed0 -> Node0x5c0eedc2e8c0[style=solid];
+	Node0x5c0eedc2e8c0 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 10, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nAddrStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n   %pts = alloca [3 x %struct.Point], align 16 \{ \"ln\": 10, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc2e8c0 -> Node0x5c0eedc83660[style=solid];
+	Node0x5c0eedc83660 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nAddrStmt: [Var12 \<-- Var13]  \nValVar ID: 12\n   %v = alloca i32, align 4 \{ \"ln\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc83660 -> Node0x5c0eedc51da0[style=solid];
+	Node0x5c0eedc51da0 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\}\nStoreStmt: [Var7 \<-- Var15]  \nValVar ID: 14\n   store i32 0, ptr %retval, align 4 }"];
+	Node0x5c0eedc51da0 -> Node0x5c0eedc53f20[style=solid];
+	Node0x5c0eedc53f20 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var17 \<-- Var10]  \nValVar ID: 17\n   %arrayidx = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !25 \{ \"ln\": 11, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc53f20 -> Node0x5c0eedc177e0[style=solid];
+	Node0x5c0eedc177e0 [shape=record,color=black,label="{IntraICFGNode8 \{fun: main\{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var19 \<-- Var17]  \nValVar ID: 19\n   %x = getelementptr inbounds %struct.Point, ptr %arrayidx, i32 0, i32 0, !dbg !26 \{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc177e0 -> Node0x5c0eedc1a6e0[style=solid];
+	Node0x5c0eedc1a6e0 [shape=record,color=black,label="{IntraICFGNode9 \{fun: main\{ \"ln\": 11, \"cl\": 14, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nStoreStmt: [Var19 \<-- Var9]  \nValVar ID: 20\n   store i32 1, ptr %x, align 16, !dbg !27 \{ \"ln\": 11, \"cl\": 14, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc1a6e0 -> Node0x5c0eedc1a340[style=solid];
+	Node0x5c0eedc1a340 [shape=record,color=black,label="{IntraICFGNode10 \{fun: main\{ \"ln\": 12, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var21 \<-- Var10]  \nValVar ID: 21\n   %arrayidx1 = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !28 \{ \"ln\": 12, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc1a340 -> Node0x5c0eedc27330[style=solid];
+	Node0x5c0eedc27330 [shape=record,color=black,label="{IntraICFGNode11 \{fun: main\{ \"ln\": 12, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var22 \<-- Var21]  \nValVar ID: 22\n   %y = getelementptr inbounds %struct.Point, ptr %arrayidx1, i32 0, i32 1, !dbg !29 \{ \"ln\": 12, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc27330 -> Node0x5c0eedc19ff0[style=solid];
+	Node0x5c0eedc19ff0 [shape=record,color=black,label="{IntraICFGNode12 \{fun: main\{ \"ln\": 12, \"cl\": 14, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nStoreStmt: [Var22 \<-- Var24]  \nValVar ID: 23\n   store i32 2, ptr %y, align 4, !dbg !30 \{ \"ln\": 12, \"cl\": 14, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc19ff0 -> Node0x5c0eedc7cec0[style=solid];
+	Node0x5c0eedc7cec0 [shape=record,color=black,label="{IntraICFGNode13 \{fun: main\{ \"ln\": 13, \"cl\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var26 \<-- Var10]  \nValVar ID: 26\n   %arrayidx2 = getelementptr inbounds [3 x %struct.Point], ptr %pts, i64 0, i64 0, !dbg !33 \{ \"ln\": 13, \"cl\": 13, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc7cec0 -> Node0x5c0eedc7ca90[style=solid];
+	Node0x5c0eedc7ca90 [shape=record,color=black,label="{IntraICFGNode14 \{fun: main\{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var27 \<-- Var26]  \nValVar ID: 27\n   %x3 = getelementptr inbounds %struct.Point, ptr %arrayidx2, i32 0, i32 0, !dbg !34 \{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc7ca90 -> Node0x5c0eedc1db50[style=solid];
+	Node0x5c0eedc1db50 [shape=record,color=black,label="{IntraICFGNode15 \{fun: main\{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nLoadStmt: [Var28 \<-- Var27]  \nValVar ID: 28\n   %0 = load i32, ptr %x3, align 16, !dbg !34 \{ \"ln\": 13, \"cl\": 20, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc1db50 -> Node0x5c0eedc35260[style=solid];
+	Node0x5c0eedc35260 [shape=record,color=black,label="{IntraICFGNode16 \{fun: main\{ \"ln\": 13, \"cl\": 9, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nStoreStmt: [Var12 \<-- Var28]  \nValVar ID: 29\n   store i32 %0, ptr %v, align 4, !dbg !32 \{ \"ln\": 13, \"cl\": 9, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc35260 -> Node0x5c0eedc58930[style=solid];
+	Node0x5c0eedc58930 [shape=record,color=black,label="{IntraICFGNode17 \{fun: main\{ \"ln\": 14, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\nLoadStmt: [Var30 \<-- Var12]  \nValVar ID: 30\n   %1 = load i32, ptr %v, align 4, !dbg !35 \{ \"ln\": 14, \"cl\": 12, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc58930 -> Node0x5c0eedc27b70[style=solid];
+	Node0x5c0eedc27b70 [shape=record,color=black,label="{IntraICFGNode18 \{fun: main\{ \"ln\": 14, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}\}\n   ret i32 %1, !dbg !36 \{ \"ln\": 14, \"cl\": 5, \"fl\": \"test/c_sources/mixed_access.c\" \}}"];
+	Node0x5c0eedc27b70 -> Node0x5c0eedc0f620[style=solid];
+}

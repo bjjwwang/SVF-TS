@@ -1,0 +1,19 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x634d9affb370 [shape=record,color=purple,label="{GlobalICFGNode0}"];
+	Node0x634d9affb370 -> Node0x634d9affebe0[style=solid];
+	Node0x634d9affebe0 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 9, \"cl\": 1, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}}"];
+	Node0x634d9affebe0 -> Node0x634d9affef00[style=solid];
+	Node0x634d9affed40 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}}"];
+	Node0x634d9affef00 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\{ \"ln\": 10, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}\nAddrStmt: [Var10 \<-- Var9]  \nValVar ID: 10\n pts \{ \"ln\": 10, \"cl\": 18, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9affef00 -> Node0x634d9afff270[style=solid];
+	Node0x634d9afff270 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 11, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var13 \<-- Var10]  \nValVar ID: 13\nnode_13\nGepStmt: [Var14 \<-- Var13]  \nValVar ID: 14\nnode_14\nStoreStmt: [Var14 \<-- Var11]  \nValVar ID: 14\nnode_14}"];
+	Node0x634d9afff270 -> Node0x634d9afff530[style=solid];
+	Node0x634d9afff530 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 12, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}\nGepStmt: [Var17 \<-- Var10]  \nValVar ID: 17\nnode_17\nGepStmt: [Var18 \<-- Var17]  \nValVar ID: 18\nnode_18\nStoreStmt: [Var18 \<-- Var15]  \nValVar ID: 18\nnode_18}"];
+	Node0x634d9afff530 -> Node0x634d9afff7f0[style=solid];
+	Node0x634d9afff7f0 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\{ \"ln\": 13, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}\nAddrStmt: [Var20 \<-- Var19]  \nValVar ID: 20\n v \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\nGepStmt: [Var22 \<-- Var10]  \nValVar ID: 22\nnode_22\nGepStmt: [Var23 \<-- Var22]  \nValVar ID: 23\nnode_23\nLoadStmt: [Var24 \<-- Var23]  \nValVar ID: 24\nnode_24\nStoreStmt: [Var20 \<-- Var24]  \nValVar ID: 20\n v \{ \"ln\": 13, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}}"];
+	Node0x634d9afff7f0 -> Node0x634d9afffad0[style=solid];
+	Node0x634d9afffad0 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\{ \"ln\": 14, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/mixed_access.c\" \}\}\nLoadStmt: [Var25 \<-- Var20]  \nValVar ID: 25\nnode_25\nCopyStmt: [Var8 \<-- Var25]  \nRetValPN ID: 8 unique return node for function main}"];
+	Node0x634d9afffad0 -> Node0x634d9affed40[style=solid];
+}

@@ -1,0 +1,44 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x56555f62f290 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x56555f62f290 -> Node0x56555f675ab0[color=black];
+	Node0x56555f675ab0 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x56555f638180 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x56555f64ea00 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x56555f634980 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x56555f634980 -> Node0x56555f64ea00[color=green];
+	Node0x56555f69d0d0 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x56555f68d1d0 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x56555f637840 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x56555f637840 -> Node0x56555f68d1d0[color=green];
+	Node0x56555f64d5f0 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %p = alloca ptr, align 8 \{ \"ln\": 7, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64d5f0 -> Node0x56555f635b20[color=red];
+	Node0x56555f64d5f0 -> Node0x56555f68d390[color=red];
+	Node0x56555f64d5f0 -> Node0x56555f639b80[color=red];
+	Node0x56555f651e90 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %p = alloca ptr, align 8 \{ \"ln\": 7, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f651e90 -> Node0x56555f64d5f0[color=green];
+	Node0x56555f698870 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %x = alloca i32, align 4 \{ \"ln\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f698870 -> Node0x56555f6a10e0[color=red];
+	Node0x56555f64d450 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %x = alloca i32, align 4 \{ \"ln\": 9, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f64d450 -> Node0x56555f698870[color=green];
+	Node0x56555f6374a0 [shape=record,shape=box,label="{[main] ValVar ID: 17\n   %call = call noalias ptr @malloc(i64 noundef 4) #4, !dbg !20 \{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6374a0 -> Node0x56555f64d5f0[color=blue];
+	Node0x56555f6a12a0 [shape=record,shape=box3d,label="{[main] HeapObjVar ID: 18\n   %call = call noalias ptr @malloc(i64 noundef 4) #4, !dbg !20 \{ \"ln\": 7, \"cl\": 20, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6a12a0 -> Node0x56555f6374a0[color=green];
+	Node0x56555f63b360 [shape=record,shape=box,label="{[malloc] FunValVar ID: 20\nmalloc}"];
+	Node0x56555f65ae50 [shape=record,shape=box3d,label="{[malloc] FunObjVar ID: 21 (base object)\nmalloc}"];
+	Node0x56555f65ae50 -> Node0x56555f63b360[color=green];
+	Node0x56555f635b20 [shape=record,shape=box,label="{[main] ValVar ID: 23\n   %0 = load ptr, ptr %p, align 8, !dbg !21 \{ \"ln\": 8, \"cl\": 6, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f68d390 [shape=record,shape=box,label="{[main] ValVar ID: 27\n   %1 = load ptr, ptr %p, align 8, !dbg !25 \{ \"ln\": 9, \"cl\": 14, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f68d390 -> Node0x56555f639d50[color=red];
+	Node0x56555f639d50 [shape=record,shape=box,label="{[main] ValVar ID: 28\n   %2 = load i32, ptr %1, align 4, !dbg !26 \{ \"ln\": 9, \"cl\": 13, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f639d50 -> Node0x56555f698870[color=blue];
+	Node0x56555f639b80 [shape=record,shape=box,label="{[main] ValVar ID: 30\n   %3 = load ptr, ptr %p, align 8, !dbg !27 \{ \"ln\": 10, \"cl\": 10, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f638770 [shape=record,shape=box,label="{[free] FunValVar ID: 32\nfree}"];
+	Node0x56555f6447a0 [shape=record,shape=box3d,label="{[free] FunObjVar ID: 33 (base object)\nfree}"];
+	Node0x56555f6447a0 -> Node0x56555f638770[color=green];
+	Node0x56555f6a10e0 [shape=record,shape=box,label="{[main] ValVar ID: 34\n   %4 = load i32, ptr %x, align 4, !dbg !29 \{ \"ln\": 11, \"cl\": 12, \"fl\": \"test/c_sources/malloc_free.c\" \}}"];
+	Node0x56555f6a10e0 -> Node0x56555f69d0d0[color=grey];
+	Node0x56555f6376c0 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 36\nllvm.dbg.declare}"];
+}

@@ -1,0 +1,19 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x566ce10e11b0 [shape=record,color=purple,label="{GlobalICFGNode0}"];
+	Node0x566ce10e11b0 -> Node0x566ce10e3e40[style=solid];
+	Node0x566ce10e3e40 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 4, \"cl\": 1, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}}"];
+	Node0x566ce10e3e40 -> Node0x566ce10e4160[style=solid];
+	Node0x566ce10e3fa0 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}}"];
+	Node0x566ce10e4160 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\{ \"ln\": 5, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var10 \<-- Var9]  \nValVar ID: 10\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\nStoreStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n x \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e4160 -> Node0x566ce10e4440[style=solid];
+	Node0x566ce10e4440 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 6, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var13 \<-- Var12]  \nValVar ID: 13\n p \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\nLoadStmt: [Var14 \<-- Var10]  \nValVar ID: 14\nnode_14\nLoadStmt: [Var15 \<-- Var14]  \nValVar ID: 15\nnode_15\nStoreStmt: [Var13 \<-- Var15]  \nValVar ID: 13\n p \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e4440 -> Node0x566ce10e4670[style=solid];
+	Node0x566ce10e4670 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 7, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var17 \<-- Var13]  \nValVar ID: 17\nnode_17\nStoreStmt: [Var17 \<-- Var16]  \nValVar ID: 17\nnode_17}"];
+	Node0x566ce10e4670 -> Node0x566ce10e48a0[style=solid];
+	Node0x566ce10e48a0 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\{ \"ln\": 8, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var19 \<-- Var18]  \nValVar ID: 19\n y \{ \"ln\": 8, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\nLoadStmt: [Var20 \<-- Var13]  \nValVar ID: 20\nnode_20\nLoadStmt: [Var21 \<-- Var20]  \nValVar ID: 21\nnode_21\nStoreStmt: [Var19 \<-- Var21]  \nValVar ID: 19\n y \{ \"ln\": 8, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}}"];
+	Node0x566ce10e48a0 -> Node0x566ce10e4b20[style=solid];
+	Node0x566ce10e4b20 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\{ \"ln\": 9, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var22 \<-- Var19]  \nValVar ID: 22\nnode_22\nCopyStmt: [Var8 \<-- Var22]  \nRetValPN ID: 8 unique return node for function main}"];
+	Node0x566ce10e4b20 -> Node0x566ce10e3fa0[style=solid];
+}

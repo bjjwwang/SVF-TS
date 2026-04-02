@@ -1,0 +1,37 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x5c77926cd170 [shape=record,color=purple,label="{GlobalICFGNode0\nCopyStmt: [Var1 \<-- Var0]  \nConstNullPtrValVar ID: 0\n ptr null \{ constant data \}\nAddrStmt: [Var9 \<-- Var3]  \nConstIntValVar ID: 9\n i32 1 \{ constant data \}\nAddrStmt: [Var25 \<-- Var3]  \nConstIntValVar ID: 25\n i32 5 \{ constant data \}\nAddrStmt: [Var20 \<-- Var3]  \nConstIntValVar ID: 20\n i32 10 \{ constant data \}\nAddrStmt: [Var17 \<-- Var3]  \nConstIntValVar ID: 17\n i32 0 \{ constant data \}\nAddrStmt: [Var4 \<-- Var5]  \nFunValVar ID: 4\nmain\nAddrStmt: [Var32 \<-- Var33]  \nFunValVar ID: 32\nllvm.dbg.declare}"];
+	Node0x5c77926cd170 -> Node0x5c77926a5850[style=solid];
+	Node0x5c77926a5850 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 4, \"file\": \"test/c_sources/pointer_ops.c\" \}\}}"];
+	Node0x5c77926a5850 -> Node0x5c77926e88a0[style=solid];
+	Node0x5c77926a6db0 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}\nPhiStmt: [Var6 \<-- ([Var30, ICFGNode16],)]  \nValVar ID: 31\n   ret i32 %3, !dbg !28 \{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926e88a0 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\}\nAddrStmt: [Var7 \<-- Var8]  \nValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x5c77926e88a0 -> Node0x5c7792715360[style=solid];
+	Node0x5c7792715360 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n   %x = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792715360 -> Node0x5c7792714c60[style=solid];
+	Node0x5c7792714c60 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var12 \<-- Var13]  \nValVar ID: 12\n   %p = alloca ptr, align 8 \{ \"ln\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792714c60 -> Node0x5c77926c1030[style=solid];
+	Node0x5c77926c1030 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\{ \"ln\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nAddrStmt: [Var14 \<-- Var15]  \nValVar ID: 14\n   %y = alloca i32, align 4 \{ \"ln\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926c1030 -> Node0x5c77926eb820[style=solid];
+	Node0x5c77926eb820 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\}\nStoreStmt: [Var7 \<-- Var17]  \nValVar ID: 16\n   store i32 0, ptr %retval, align 4 }"];
+	Node0x5c77926eb820 -> Node0x5c779270c280[style=solid];
+	Node0x5c779270c280 [shape=record,color=black,label="{IntraICFGNode8 \{fun: main\{ \"ln\": 5, \"cl\": 9, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nStoreStmt: [Var10 \<-- Var20]  \nValVar ID: 19\n   store i32 10, ptr %x, align 4, !dbg !17 \{ \"ln\": 5, \"cl\": 9, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c779270c280 -> Node0x5c77926ed9a0[style=solid];
+	Node0x5c77926ed9a0 [shape=record,color=black,label="{IntraICFGNode9 \{fun: main\{ \"ln\": 6, \"cl\": 10, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nStoreStmt: [Var12 \<-- Var10]  \nValVar ID: 22\n   store ptr %x, ptr %p, align 8, !dbg !20 \{ \"ln\": 6, \"cl\": 10, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926ed9a0 -> Node0x5c7792717dd0[style=solid];
+	Node0x5c7792717dd0 [shape=record,color=black,label="{IntraICFGNode10 \{fun: main\{ \"ln\": 7, \"cl\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var23 \<-- Var12]  \nValVar ID: 23\n   %0 = load ptr, ptr %p, align 8, !dbg !21 \{ \"ln\": 7, \"cl\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792717dd0 -> Node0x5c77926cd810[style=solid];
+	Node0x5c77926cd810 [shape=record,color=black,label="{IntraICFGNode11 \{fun: main\{ \"ln\": 7, \"cl\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nStoreStmt: [Var23 \<-- Var25]  \nValVar ID: 24\n   store i32 5, ptr %0, align 4, !dbg !22 \{ \"ln\": 7, \"cl\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926cd810 -> Node0x5c77926c9130[style=solid];
+	Node0x5c77926c9130 [shape=record,color=black,label="{IntraICFGNode12 \{fun: main\{ \"ln\": 8, \"cl\": 14, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var27 \<-- Var12]  \nValVar ID: 27\n   %1 = load ptr, ptr %p, align 8, !dbg !25 \{ \"ln\": 8, \"cl\": 14, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926c9130 -> Node0x5c77926b80e0[style=solid];
+	Node0x5c77926b80e0 [shape=record,color=black,label="{IntraICFGNode13 \{fun: main\{ \"ln\": 8, \"cl\": 13, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var28 \<-- Var27]  \nValVar ID: 28\n   %2 = load i32, ptr %1, align 4, !dbg !26 \{ \"ln\": 8, \"cl\": 13, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b80e0 -> Node0x5c7792715f50[style=solid];
+	Node0x5c7792715f50 [shape=record,color=black,label="{IntraICFGNode14 \{fun: main\{ \"ln\": 8, \"cl\": 9, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nStoreStmt: [Var14 \<-- Var28]  \nValVar ID: 29\n   store i32 %2, ptr %y, align 4, !dbg !24 \{ \"ln\": 8, \"cl\": 9, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792715f50 -> Node0x5c7792719a30[style=solid];
+	Node0x5c7792719a30 [shape=record,color=black,label="{IntraICFGNode15 \{fun: main\{ \"ln\": 9, \"cl\": 12, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\nLoadStmt: [Var30 \<-- Var14]  \nValVar ID: 30\n   %3 = load i32, ptr %y, align 4, !dbg !27 \{ \"ln\": 9, \"cl\": 12, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792719a30 -> Node0x5c77926b1530[style=solid];
+	Node0x5c77926b1530 [shape=record,color=black,label="{IntraICFGNode16 \{fun: main\{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}\}\n   ret i32 %3, !dbg !28 \{ \"ln\": 9, \"cl\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b1530 -> Node0x5c77926a6db0[style=solid];
+}

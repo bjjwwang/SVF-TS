@@ -1,0 +1,26 @@
+digraph "ICFG" {
+	label="ICFG";
+
+	Node0x60d2806801b0 [shape=record,color=purple,label="{GlobalICFGNode0}"];
+	Node0x60d2806801b0 -> Node0x60d280683250[style=solid];
+	Node0x60d280683250 [shape=record,color=yellow,label="{FunEntryICFGNode1 \{fun: main\{ \"ln\": 4, \"cl\": 1, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}}"];
+	Node0x60d280683250 -> Node0x60d280683540[style=solid];
+	Node0x60d2806833b0 [shape=record,color=green,label="{FunExitICFGNode2 \{fun: main\}}"];
+	Node0x60d280683540 [shape=record,color=black,label="{IntraICFGNode3 \{fun: main\{ \"ln\": 5, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var10 \<-- Var9]  \nValVar ID: 10\n c \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\nStoreStmt: [Var10 \<-- Var11]  \nValVar ID: 10\n c \{ \"ln\": 5, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280683540 -> Node0x60d2806838b0[style=solid];
+	Node0x60d2806838b0 [shape=record,color=black,label="{IntraICFGNode4 \{fun: main\{ \"ln\": 6, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var13 \<-- Var12]  \nValVar ID: 13\n x \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d2806838b0 -> Node0x60d280683b70[style=solid];
+	Node0x60d280683b70 [shape=record,color=black,label="{IntraICFGNode5 \{fun: main\{ \"ln\": 7, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nLoadStmt: [Var14 \<-- Var10]  \nValVar ID: 14\nnode_14}"];
+	Node0x60d280683b70 -> Node0x60d280683f10[style=solid];
+	Node0x60d280683b70 -> Node0x60d280684210[style=solid];
+	Node0x60d280683dc0 [shape=record,color=black,label="{IntraICFGNode6 \{fun: main\}\nnode_6}"];
+	Node0x60d280683dc0 -> Node0x60d280684610[style=solid];
+	Node0x60d280683f10 [shape=record,color=black,label="{IntraICFGNode7 \{fun: main\{ \"ln\": 8, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nStoreStmt: [Var13 \<-- Var15]  \nValVar ID: 13\n x \{ \"ln\": 6, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280683f10 -> Node0x60d280683dc0[style=solid];
+	Node0x60d280684210 [shape=record,color=black,label="{IntraICFGNode8 \{fun: main\{ \"ln\": 9, \"cl\": 7, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nnode_8 \{ \"ln\": 9, \"cl\": 7, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280684210 -> Node0x60d280683dc0[style=solid];
+	Node0x60d280684610 [shape=record,color=black,label="{IntraICFGNode9 \{fun: main\{ \"ln\": 12, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nAddrStmt: [Var17 \<-- Var16]  \nValVar ID: 17\n y \{ \"ln\": 12, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\nLoadStmt: [Var18 \<-- Var13]  \nValVar ID: 18\nnode_18\nStoreStmt: [Var17 \<-- Var18]  \nValVar ID: 17\n y \{ \"ln\": 12, \"cl\": 9, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}}"];
+	Node0x60d280684610 -> Node0x60d2806848d0[style=solid];
+	Node0x60d2806848d0 [shape=record,color=black,label="{IntraICFGNode10 \{fun: main\{ \"ln\": 13, \"cl\": 5, \"fl\": \"/var/tmp/vibe-kanban/worktrees/c13e-implement-c-vers/SVF-CVE/test/c_sources/control_flow.c\" \}\}\nLoadStmt: [Var19 \<-- Var17]  \nValVar ID: 19\nnode_19\nCopyStmt: [Var8 \<-- Var19]  \nRetValPN ID: 8 unique return node for function main}"];
+	Node0x60d2806848d0 -> Node0x60d2806833b0[style=solid];
+}

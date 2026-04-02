@@ -1,0 +1,36 @@
+digraph "SVFIR" {
+	label="SVFIR";
+
+	Node0x5c77926fdc90 [shape=record,shape=box,label="{ConstNullPtrValVar ID: 0\n ptr null \{ constant data \}}"];
+	Node0x5c77926fdc90 -> Node0x5c77926fbbe0[color=black];
+	Node0x5c77926fbbe0 [shape=record,shape=diamond,label="{DummyValVar ID: 1}"];
+	Node0x5c779271a060 [shape=record,shape=box3d,label="{DummyObjVar ID: 3}"];
+	Node0x5c77926a7f60 [shape=record,shape=box,label="{[main] FunValVar ID: 4\nmain}"];
+	Node0x5c7792717fa0 [shape=record,shape=box3d,label="{[main] FunObjVar ID: 5 (base object)\nmain}"];
+	Node0x5c7792717fa0 -> Node0x5c77926a7f60[color=green];
+	Node0x5c77926b46c0 [shape=record,shape=box,label="{[main] RetValPN ID: 6 unique return node for function main}"];
+	Node0x5c77926b7c80 [shape=record,shape=box,label="{[main] ValVar ID: 7\n   %retval = alloca i32, align 4 }"];
+	Node0x5c77926a4990 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 8\n   %retval = alloca i32, align 4 }"];
+	Node0x5c77926a4990 -> Node0x5c77926b7c80[color=green];
+	Node0x5c77926c0580 [shape=record,shape=box,label="{[main] ValVar ID: 10\n   %x = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926c0580 -> Node0x5c77926b8f60[color=blue];
+	Node0x5c77926b5f20 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 11\n   %x = alloca i32, align 4 \{ \"ln\": 5, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b5f20 -> Node0x5c77926c0580[color=green];
+	Node0x5c77926b8f60 [shape=record,shape=box,label="{[main] ValVar ID: 12\n   %p = alloca ptr, align 8 \{ \"ln\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b8f60 -> Node0x5c7792718480[color=red];
+	Node0x5c77926b8f60 -> Node0x5c77926cd270[color=red];
+	Node0x5c77926c01b0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 13\n   %p = alloca ptr, align 8 \{ \"ln\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926c01b0 -> Node0x5c77926b8f60[color=green];
+	Node0x5c77926c7f20 [shape=record,shape=box,label="{[main] ValVar ID: 14\n   %y = alloca i32, align 4 \{ \"ln\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926c7f20 -> Node0x5c77926b4be0[color=red];
+	Node0x5c7792703cf0 [shape=record,shape=box3d,label="{[main] StackObjVar ID: 15\n   %y = alloca i32, align 4 \{ \"ln\": 8, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c7792703cf0 -> Node0x5c77926c7f20[color=green];
+	Node0x5c7792718480 [shape=record,shape=box,label="{[main] ValVar ID: 23\n   %0 = load ptr, ptr %p, align 8, !dbg !21 \{ \"ln\": 7, \"cl\": 6, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926cd270 [shape=record,shape=box,label="{[main] ValVar ID: 27\n   %1 = load ptr, ptr %p, align 8, !dbg !25 \{ \"ln\": 8, \"cl\": 14, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926cd270 -> Node0x5c77926b54a0[color=red];
+	Node0x5c77926b54a0 [shape=record,shape=box,label="{[main] ValVar ID: 28\n   %2 = load i32, ptr %1, align 4, !dbg !26 \{ \"ln\": 8, \"cl\": 13, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b54a0 -> Node0x5c77926c7f20[color=blue];
+	Node0x5c77926b4be0 [shape=record,shape=box,label="{[main] ValVar ID: 30\n   %3 = load i32, ptr %y, align 4, !dbg !27 \{ \"ln\": 9, \"cl\": 12, \"fl\": \"test/c_sources/pointer_ops.c\" \}}"];
+	Node0x5c77926b4be0 -> Node0x5c77926b46c0[color=grey];
+	Node0x5c77926b4950 [shape=record,shape=box,label="{[llvm.dbg.declare] FunValVar ID: 32\nllvm.dbg.declare}"];
+}
