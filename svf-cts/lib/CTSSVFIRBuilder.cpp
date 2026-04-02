@@ -1101,10 +1101,60 @@ void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
 
 void CTSSVFIRBuilder::processWhileStatement(TSNode whileStmt, CTSSourceFile* file)
 {
+    // while: getICFGNode(whileStmt) = condNode (recorded in ICFG builder)
+    // condNode has edges: condNode → bodyFirst (true), condNode → afterNode (false)
+    ICFGNode* condICFGNode = getICFGNode(whileStmt, file);
+
+    // Evaluate condition ON the condNode (so CmpStmt attaches to the right node)
     TSNode cond = ts_node_child_by_field_name(whileStmt, "condition", 9);
+    NodeID condVal = blackHoleNode;
     if (!ts_node_is_null(cond))
     {
-        getExprValue(cond, file);
+        if (condICFGNode) currentICFGNode = condICFGNode;
+        condVal = getExprValue(cond, file);
+    }
+
+    // Set branch conditions on condNode's outgoing edges
+    if (condICFGNode && condVal != blackHoleNode)
+    {
+        const SVFVar* condVar = pag->getGNode(condVal);
+
+        std::set<const ICFGNode*> dstNodes;
+        for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+            if (SVFUtil::isa<IntraCFGEdge>(*it))
+                dstNodes.insert((*it)->getDstNode());
+
+        if (dstNodes.size() >= 2)
+        {
+            TSNode bodyNode = CTSParser::getLoopBody(whileStmt);
+            ICFGNode* bodyICFGNode = nullptr;
+            if (!ts_node_is_null(bodyNode))
+            {
+                bodyICFGNode = getICFGNode(bodyNode, file);
+                if (!bodyICFGNode && strcmp(ts_node_type(bodyNode), "compound_statement") == 0)
+                {
+                    uint32_t cnt = ts_node_named_child_count(bodyNode);
+                    for (uint32_t i = 0; i < cnt && !bodyICFGNode; i++)
+                        bodyICFGNode = getICFGNode(ts_node_named_child(bodyNode, i), file);
+                }
+            }
+
+            if (bodyICFGNode)
+            {
+                BranchStmt::SuccAndCondPairVec succs;
+                for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+                {
+                    if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                    {
+                        s32_t cv = (edge->getDstNode() == bodyICFGNode) ? 1 : 0;
+                        icfgBuilder->setEdgeCondition(edge, condVar, cv);
+                        succs.push_back(std::make_pair(edge->getDstNode(), cv));
+                    }
+                }
+                if (!succs.empty())
+                    addBranchEdge(condVal, condVal, succs);
+            }
+        }
     }
 
     TSNode body = CTSParser::getLoopBody(whileStmt);
@@ -1116,21 +1166,104 @@ void CTSSVFIRBuilder::processWhileStatement(TSNode whileStmt, CTSSourceFile* fil
 
 void CTSSVFIRBuilder::processForStatement(TSNode forStmt, CTSSourceFile* file)
 {
+    // for: getICFGNode(forStmt) = initNode (recorded in ICFG builder)
+    // ICFG structure: initNode → condNode → bodyFirst / afterNode
+    //                                   updateNode → condNode (back-edge)
+    ICFGNode* initICFGNode = getICFGNode(forStmt, file);
+
+    // Process init on initNode
     TSNode init = ts_node_child_by_field_name(forStmt, "initializer", 11);
     if (!ts_node_is_null(init))
     {
         processStatement(init, file);
     }
 
-    TSNode cond = ts_node_child_by_field_name(forStmt, "condition", 9);
-    if (!ts_node_is_null(cond))
+    // Find condNode: it's the sole successor of initNode
+    ICFGNode* condICFGNode = nullptr;
+    if (initICFGNode)
     {
-        getExprValue(cond, file);
+        for (auto it = initICFGNode->OutEdgeBegin(); it != initICFGNode->OutEdgeEnd(); ++it)
+        {
+            if (SVFUtil::isa<IntraCFGEdge>(*it))
+            {
+                condICFGNode = (*it)->getDstNode();
+                break;
+            }
+        }
     }
 
+    // Evaluate condition ON the condNode
+    TSNode cond = ts_node_child_by_field_name(forStmt, "condition", 9);
+    NodeID condVal = blackHoleNode;
+    if (!ts_node_is_null(cond))
+    {
+        if (condICFGNode) currentICFGNode = condICFGNode;
+        condVal = getExprValue(cond, file);
+    }
+
+    // Set branch conditions on condNode's edges
+    if (condICFGNode && condVal != blackHoleNode)
+    {
+        const SVFVar* condVar = pag->getGNode(condVal);
+
+        std::set<const ICFGNode*> dstNodes;
+        for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+            if (SVFUtil::isa<IntraCFGEdge>(*it))
+                dstNodes.insert((*it)->getDstNode());
+
+        if (dstNodes.size() >= 2)
+        {
+            // Find loop body's first ICFG node
+            TSNode bodyNode = CTSParser::getLoopBody(forStmt);
+            ICFGNode* bodyICFGNode = nullptr;
+            if (!ts_node_is_null(bodyNode))
+            {
+                bodyICFGNode = getICFGNode(bodyNode, file);
+                if (!bodyICFGNode && strcmp(ts_node_type(bodyNode), "compound_statement") == 0)
+                {
+                    uint32_t cnt = ts_node_named_child_count(bodyNode);
+                    for (uint32_t i = 0; i < cnt && !bodyICFGNode; i++)
+                        bodyICFGNode = getICFGNode(ts_node_named_child(bodyNode, i), file);
+                }
+            }
+
+            if (bodyICFGNode)
+            {
+                BranchStmt::SuccAndCondPairVec succs;
+                for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+                {
+                    if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                    {
+                        s32_t cv = (edge->getDstNode() == bodyICFGNode) ? 1 : 0;
+                        icfgBuilder->setEdgeCondition(edge, condVar, cv);
+                        succs.push_back(std::make_pair(edge->getDstNode(), cv));
+                    }
+                }
+                if (!succs.empty())
+                    addBranchEdge(condVal, condVal, succs);
+            }
+        }
+    }
+
+    // Find updateNode: condNode's successor that is NOT bodyFirst and NOT afterNode
+    // Actually, updateNode is the node that has a back-edge to condNode
+    // Process update expression on the updateNode
     TSNode update = ts_node_child_by_field_name(forStmt, "update", 6);
     if (!ts_node_is_null(update))
     {
+        // Find updateNode: it's the predecessor of condNode that is NOT initNode
+        if (condICFGNode)
+        {
+            for (auto it = condICFGNode->InEdgeBegin(); it != condICFGNode->InEdgeEnd(); ++it)
+            {
+                ICFGNode* pred = (*it)->getSrcNode();
+                if (pred != initICFGNode && pred != condICFGNode)
+                {
+                    currentICFGNode = pred; // updateNode
+                    break;
+                }
+            }
+        }
         processExpression(update, file);
     }
 
