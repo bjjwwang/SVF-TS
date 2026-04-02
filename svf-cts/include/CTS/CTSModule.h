@@ -176,6 +176,8 @@ public:
 
     /// Add an externally created type to our ownership
     void addOwnedType(SVFType* type) { ownedTypes.push_back(type); }
+    /// Get all owned types (for StInfo registration)
+    const std::vector<SVFType*>& getOwnedTypes() const { return ownedTypes; }
 
     /// Node ID tracking
     void setValID(TSNode node, CTSSourceFile* file, NodeID id);

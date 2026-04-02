@@ -2,6 +2,7 @@
 #include "CTS/CTSParser.h"
 #include "Graphs/ICFGNode.h"
 #include "Graphs/ICFGEdge.h"
+#include "Util/SVFUtil.h"
 
 #include <cstring>
 
@@ -243,15 +244,24 @@ CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processStatement(
                 RetICFGNode* retNode = addRetICFGNode(callNode);
                 const_cast<SVFBasicBlock*>(bb)->addICFGNode(retNode);
 
-                // CallICFGNode → FunEntryICFGNode (call edge)
-                FunEntryICFGNode* calleeEntry = getFunEntryICFGNode(calledFunc);
-                if (calleeEntry)
-                    addCallEdge(callNode, calleeEntry);
+                if (SVFUtil::isExtCall(calledFunc))
+                {
+                    // External functions: direct intra edge from call to ret
+                    // (matching LLVM frontend behavior — AE needs this to
+                    //  propagate state through external call sites)
+                    addIntraEdge(callNode, retNode);
+                }
+                else
+                {
+                    // Internal functions: interprocedural call/ret edges
+                    FunEntryICFGNode* calleeEntry = getFunEntryICFGNode(calledFunc);
+                    if (calleeEntry)
+                        addCallEdge(callNode, calleeEntry);
 
-                // FunExitICFGNode → RetICFGNode (return edge)
-                FunExitICFGNode* calleeExit = getFunExitICFGNode(calledFunc);
-                if (calleeExit)
-                    addRetEdge(calleeExit, retNode);
+                    FunExitICFGNode* calleeExit = getFunExitICFGNode(calledFunc);
+                    if (calleeExit)
+                        addRetEdge(calleeExit, retNode);
+                }
 
                 // Chain: previous retNode → this callNode
                 if (lastNode)

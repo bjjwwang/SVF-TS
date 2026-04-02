@@ -90,6 +90,14 @@ SVFIR* CTSSVFIRBuilder::build(const std::vector<std::string>& sourceFiles)
         }
     }
 
+    // Step 9b: Register StInfo for any types created during function processing
+    // (e.g., array types from local variable declarations)
+    for (SVFType* type : moduleSet->getOwnedTypes())
+    {
+        if (type && type2StInfo.find(type) == type2StInfo.end())
+            collectTypeInfo(type);
+    }
+
     // Step 10: Build CallGraph (AFTER function processing, so CallPE edges exist)
     {
         std::vector<const FunObjVar*> funset;
@@ -875,6 +883,12 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         return createHeapObj(call, file, currentICFGNode);
     }
 
+    // Handle realloc as heap allocation
+    if (funcName == "realloc")
+    {
+        return createHeapObj(call, file, currentICFGNode);
+    }
+
     // Handle free as no-op (returns void)
     if (funcName == "free")
     {
@@ -999,47 +1013,69 @@ void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
     }
 
     // Set branch conditions on ICFG edges from the condition node
-    // The condition node is the ICFG node for this if_statement
     ICFGNode* condICFGNode = getICFGNode(ifStmt, file);
     if (condICFGNode && condVal != blackHoleNode)
     {
         const SVFVar* condVar = pag->getGNode(condVal);
-        // Get the ICFG nodes for then/else branches to identify edges
-        TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
-        ICFGNode* thenICFGNode = !ts_node_is_null(consequence) ?
-            getICFGNode(consequence, file) : nullptr;
 
+        // Collect distinct outgoing intra-edge destinations
+        std::set<const ICFGNode*> dstNodes;
         for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
         {
-            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
-            {
-                if (thenICFGNode && edge->getDstNode() == thenICFGNode)
-                {
-                    // Then-branch: condition value = 1 (true)
-                    icfgBuilder->setEdgeCondition(edge, condVar, 1);
-                }
-                else
-                {
-                    // Else-branch or fallthrough to merge: condition value = 0 (false)
-                    icfgBuilder->setEdgeCondition(edge, condVar, 0);
-                }
-            }
+            if (SVFUtil::isa<IntraCFGEdge>(*it))
+                dstNodes.insert((*it)->getDstNode());
         }
 
-        // Create BranchStmt for the condition
-        BranchStmt::SuccAndCondPairVec succs;
-        for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+        // Only set branch conditions if there are at least 2 distinct successors
+        // (otherwise both edges go to the same merge node — no real branch)
+        if (dstNodes.size() >= 2)
         {
-            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+            // Find the then-branch ICFG node: look for the first ICFG node
+            // inside the consequence body
+            TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+            ICFGNode* thenICFGNode = nullptr;
+            if (!ts_node_is_null(consequence))
             {
-                const ICFGNode* dst = edge->getDstNode();
-                s32_t condValInt = (thenICFGNode && dst == thenICFGNode) ? 1 : 0;
-                succs.push_back(std::make_pair(dst, condValInt));
+                thenICFGNode = getICFGNode(consequence, file);
+                // If consequence is a compound_statement, try its first child
+                if (!thenICFGNode && strcmp(ts_node_type(consequence), "compound_statement") == 0)
+                {
+                    uint32_t count = ts_node_named_child_count(consequence);
+                    for (uint32_t i = 0; i < count && !thenICFGNode; i++)
+                    {
+                        TSNode child = ts_node_named_child(consequence, i);
+                        thenICFGNode = getICFGNode(child, file);
+                    }
+                }
             }
-        }
-        if (!succs.empty())
-        {
-            addBranchEdge(condVal, condVal, succs);
+
+            if (thenICFGNode)
+            {
+                for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+                {
+                    if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                    {
+                        if (edge->getDstNode() == thenICFGNode)
+                            icfgBuilder->setEdgeCondition(edge, condVar, 1);
+                        else
+                            icfgBuilder->setEdgeCondition(edge, condVar, 0);
+                    }
+                }
+
+                BranchStmt::SuccAndCondPairVec succs;
+                for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+                {
+                    if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                    {
+                        const ICFGNode* dst = edge->getDstNode();
+                        s32_t cv = (dst == thenICFGNode) ? 1 : 0;
+                        succs.push_back(std::make_pair(dst, cv));
+                    }
+                }
+                if (!succs.empty())
+                    addBranchEdge(condVal, condVal, succs);
+            }
+            // If thenICFGNode is still null, don't set conditions — leave edges unconditional
         }
     }
 
@@ -1173,10 +1209,26 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
 
     const char* type = ts_node_type(expr);
 
+    // true/false literals (tree-sitter parses these as identifiers without preprocessing)
+    if (strcmp(type, "true") == 0)
+        return createConstIntNode(1, currentICFGNode);
+    if (strcmp(type, "false") == 0)
+        return createConstIntNode(0, currentICFGNode);
+
     // Identifier → look up variable, load its value
     if (strcmp(type, "identifier") == 0)
     {
         std::string name = CTSParser::getNodeText(expr, file->getSource());
+
+        // Handle true/false as identifiers (from stdbool.h without preprocessing)
+        if (name == "true" || name == "TRUE")
+            return createConstIntNode(1, currentICFGNode);
+        if (name == "false" || name == "FALSE")
+            return createConstIntNode(0, currentICFGNode);
+        // Handle NULL as identifier
+        if (name == "NULL")
+            return createConstNullNode(currentICFGNode);
+
         auto* varInfo = scopeManager->lookupVar(name);
         if (varInfo)
         {
@@ -1211,7 +1263,44 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
     {
         std::string text = CTSParser::getNodeText(expr, file->getSource());
         s64_t val = 0;
-        try { val = std::stoll(text); } catch (...) {}
+        try {
+            if (text.size() > 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X'))
+                val = std::stoll(text, nullptr, 16);
+            else if (text.size() > 1 && text[0] == '0' && text.find('.') == std::string::npos)
+                val = std::stoll(text, nullptr, 8);
+            else
+                val = std::stoll(text);
+        } catch (...) {}
+        return createConstIntNode(val, currentICFGNode);
+    }
+
+    // Character literal: 'A' → integer value
+    if (strcmp(type, "char_literal") == 0)
+    {
+        std::string text = CTSParser::getNodeText(expr, file->getSource());
+        s64_t val = 0;
+        if (text.size() >= 3 && text[0] == '\'' && text.back() == '\'')
+        {
+            if (text[1] == '\\' && text.size() >= 4)
+            {
+                // Escape sequences
+                switch (text[2])
+                {
+                    case 'n': val = '\n'; break;
+                    case 't': val = '\t'; break;
+                    case '0': val = '\0'; break;
+                    case '\\': val = '\\'; break;
+                    case '\'': val = '\''; break;
+                    case '"': val = '"'; break;
+                    case 'r': val = '\r'; break;
+                    default: val = text[2]; break;
+                }
+            }
+            else
+            {
+                val = (unsigned char)text[1];
+            }
+        }
         return createConstIntNode(val, currentICFGNode);
     }
 
@@ -1452,6 +1541,52 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
             result = getExprValue(ts_node_named_child(expr, i), file);
         }
         return result;
+    }
+
+    // Update expression (i++, i--, ++i, --i) used as rvalue
+    if (strcmp(type, "update_expression") == 0)
+    {
+        TSNode operand = ts_node_named_child(expr, 0);
+        NodeID loadVal = getExprValue(operand, file);
+        NodeID one = createConstIntNode(1, currentICFGNode);
+        NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
+
+        uint32_t childCount = ts_node_child_count(expr);
+        bool isIncrement = true;
+        bool isPrefix = false;
+        for (uint32_t i = 0; i < childCount; i++)
+        {
+            TSNode child = ts_node_child(expr, i);
+            std::string childText = CTSParser::getNodeText(child, file->getSource());
+            if (childText == "--") { isIncrement = false; break; }
+        }
+        // Check if prefix (operator before operand)
+        if (childCount >= 2)
+        {
+            TSNode first = ts_node_child(expr, 0);
+            std::string firstText = CTSParser::getNodeText(first, file->getSource());
+            if (firstText == "++" || firstText == "--") isPrefix = true;
+        }
+
+        addBinaryOPEdge(loadVal, one, result,
+                         isIncrement ? BinaryOPStmt::Add : BinaryOPStmt::Sub);
+
+        // Store result back
+        NodeID lval = getExprLValue(operand, file);
+        if (lval != blackHoleNode)
+            addStoreEdge(result, lval, currentICFGNode);
+
+        // For prefix, return the new value; for postfix, return the old value
+        return isPrefix ? result : loadVal;
+    }
+
+    // Initializer list {0, 1, 2} — just return first element value
+    if (strcmp(type, "initializer_list") == 0)
+    {
+        uint32_t count = ts_node_named_child_count(expr);
+        if (count > 0)
+            return getExprValue(ts_node_named_child(expr, 0), file);
+        return createConstIntNode(0, currentICFGNode);
     }
 
     // Default: create a value node
@@ -1804,8 +1939,13 @@ void CTSSVFIRBuilder::buildTypeInfo()
             collectTypeInfo(type);
     }
 
-    // Create StInfo for any function types already created
-    // (SVFFunctionType created during createFunctionObjects will be added here)
+    // Create StInfo for ALL owned types (including array types created during
+    // declaration processing, function types, etc.)
+    for (SVFType* type : moduleSet->getOwnedTypes())
+    {
+        if (type && type2StInfo.find(type) == type2StInfo.end())
+            collectTypeInfo(type);
+    }
 }
 
 
