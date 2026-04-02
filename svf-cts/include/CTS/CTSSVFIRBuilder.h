@@ -63,6 +63,11 @@ private:
                      const FunEntryICFGNode* entry);
     void addRetEdge(NodeID src, NodeID dst, const CallICFGNode* cs,
                     const FunExitICFGNode* exit);
+    void addBinaryOPEdge(NodeID op1, NodeID op2, NodeID dst, u32_t opcode);
+    void addCmpEdge(NodeID op1, NodeID op2, NodeID dst, u32_t predicate);
+    void addUnaryOPEdge(NodeID src, NodeID dst, u32_t opcode);
+    void addBranchEdge(NodeID br, NodeID cond,
+                       const BranchStmt::SuccAndCondPairVec& succs);
 
     //===------------------------------------------------------------------===//
     // Build pipeline

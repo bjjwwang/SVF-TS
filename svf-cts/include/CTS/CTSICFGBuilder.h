@@ -67,6 +67,11 @@ private:
     /// Track statement → ICFG node mapping
     void recordStmtNode(TSNode node, CTSSourceFile* file, ICFGNode* icfgNode);
 
+public:
+    /// Set branch condition on an IntraCFGEdge (needs friend access via ICFG)
+    void setEdgeCondition(IntraCFGEdge* edge, const SVFVar* condVar, s64_t branchVal);
+
+private:
     CTSModuleSet* moduleSet;
     std::map<std::pair<CTSSourceFile*, uint32_t>, ICFGNode*> stmtToICFGNode;
     std::map<std::pair<CTSSourceFile*, uint32_t>, const SVFBasicBlock*> stmtToBB;

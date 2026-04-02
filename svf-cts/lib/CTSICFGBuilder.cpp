@@ -550,6 +550,12 @@ void CTSICFGBuilder::recordStmtNode(TSNode node, CTSSourceFile* file, ICFGNode* 
     stmtToICFGNode[key] = icfgNode;
 }
 
+void CTSICFGBuilder::setEdgeCondition(IntraCFGEdge* edge, const SVFVar* condVar, s64_t branchVal)
+{
+    edge->setConditionVar(condVar);
+    edge->setBranchCondVal(branchVal);
+}
+
 ICFGNode* CTSICFGBuilder::getStmtICFGNode(TSNode node, CTSSourceFile* file) const
 {
     auto key = std::make_pair(file, ts_node_start_byte(node));

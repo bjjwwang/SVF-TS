@@ -267,22 +267,26 @@ void CTSModuleSet::initBuiltinTypes()
     SVFType::setSVFPtrType(ptrType);
 
     auto* i8Type = new SVFIntegerType(typeIdCounter++, 1);
+    i8Type->setSignAndWidth(-8);  // signed 8-bit
     ownedTypes.push_back(i8Type);
     typeMap["i8"] = i8Type;
     typeMap["char"] = i8Type;
     SVFType::setSVFInt8Type(i8Type);
 
     auto* i32Type = new SVFIntegerType(typeIdCounter++, 4);
+    i32Type->setSignAndWidth(-32);  // signed 32-bit
     ownedTypes.push_back(i32Type);
     typeMap["int"] = i32Type;
     typeMap["i32"] = i32Type;
 
     auto* i64Type = new SVFIntegerType(typeIdCounter++, 8);
+    i64Type->setSignAndWidth(-64);  // signed 64-bit
     ownedTypes.push_back(i64Type);
     typeMap["long"] = i64Type;
     typeMap["i64"] = i64Type;
 
     auto* i16Type = new SVFIntegerType(typeIdCounter++, 2);
+    i16Type->setSignAndWidth(-16);  // signed 16-bit
     ownedTypes.push_back(i16Type);
     typeMap["short"] = i16Type;
 
@@ -337,6 +341,7 @@ SVFPointerType* CTSModuleSet::createPointerType()
 SVFIntegerType* CTSModuleSet::createIntegerType(u32_t byteSize)
 {
     auto* type = new SVFIntegerType(typeIdCounter++, byteSize);
+    type->setSignAndWidth(-(short)(byteSize * 8));  // default to signed
     ownedTypes.push_back(type);
     return type;
 }

@@ -198,17 +198,38 @@ NodeID CTSSVFIRBuilder::createValNode(const SVFType* type, const ICFGNode* icfgN
 
 NodeID CTSSVFIRBuilder::createConstIntNode(s64_t value, const ICFGNode* icfgNode)
 {
-    NodeID id = NodeIDAllocator::get()->allocateValueId();
-    pag->addConstantIntValNode(id, std::make_pair(value, (u64_t)value),
+    // Create ObjVar + ValVar + AddrStmt (matching LLVM pattern)
+    // The AE's initObjVar needs the ObjVar to initialize constant values
+    NodeID objId = NodeIDAllocator::get()->allocateObjectId();
+    ObjTypeInfo* ti = pag->createObjTypeInfo(moduleSet->getIntType());
+    ti->setFlag(ObjTypeInfo::CONST_DATA);
+    pag->idToObjTypeInfoMap()[objId] = ti;
+    pag->addConstantIntObjNode(objId, ti, std::make_pair(value, (u64_t)value), icfgNode);
+
+    NodeID valId = NodeIDAllocator::get()->allocateValueId();
+    pag->addConstantIntValNode(valId, std::make_pair(value, (u64_t)value),
                                 icfgNode, moduleSet->getIntType());
-    return id;
+
+    // AddrStmt links obj → val, allowing AE to initialize the constant value
+    addAddrEdge(objId, valId);
+
+    return valId;
 }
 
 NodeID CTSSVFIRBuilder::createConstNullNode(const ICFGNode* icfgNode)
 {
-    NodeID id = NodeIDAllocator::get()->allocateValueId();
-    pag->addConstantNullPtrValNode(id, icfgNode, moduleSet->getPtrType());
-    return id;
+    NodeID objId = NodeIDAllocator::get()->allocateObjectId();
+    ObjTypeInfo* ti = pag->createObjTypeInfo(moduleSet->getPtrType());
+    ti->setFlag(ObjTypeInfo::CONST_DATA);
+    pag->idToObjTypeInfoMap()[objId] = ti;
+    pag->addConstantNullPtrObjNode(objId, ti, icfgNode);
+
+    NodeID valId = NodeIDAllocator::get()->allocateValueId();
+    pag->addConstantNullPtrValNode(valId, icfgNode, moduleSet->getPtrType());
+
+    addAddrEdge(objId, valId);
+
+    return valId;
 }
 
 //===----------------------------------------------------------------------===//
@@ -297,6 +318,66 @@ void CTSSVFIRBuilder::addRetEdge(NodeID src, NodeID dst, const CallICFGNode* cs,
                                   const FunExitICFGNode* exit)
 {
     pag->addRetPE(src, dst, cs, exit);
+}
+
+void CTSSVFIRBuilder::addBinaryOPEdge(NodeID op1, NodeID op2, NodeID dst, u32_t opcode)
+{
+    BinaryOPStmt* edge = pag->addBinaryOPStmt(op1, op2, dst, opcode);
+    if (edge)
+    {
+        edge->setValue(pag->getGNode(dst));
+        edge->setBB(currentBB);
+        edge->setICFGNode(currentICFGNode);
+        if (currentICFGNode)
+        {
+            pag->addToSVFStmtList(currentICFGNode, edge);
+            currentICFGNode->addSVFStmt(edge);
+        }
+    }
+}
+
+void CTSSVFIRBuilder::addCmpEdge(NodeID op1, NodeID op2, NodeID dst, u32_t predicate)
+{
+    CmpStmt* edge = pag->addCmpStmt(op1, op2, dst, predicate);
+    if (edge)
+    {
+        edge->setValue(pag->getGNode(dst));
+        edge->setBB(currentBB);
+        edge->setICFGNode(currentICFGNode);
+        if (currentICFGNode)
+        {
+            pag->addToSVFStmtList(currentICFGNode, edge);
+            currentICFGNode->addSVFStmt(edge);
+        }
+    }
+}
+
+void CTSSVFIRBuilder::addUnaryOPEdge(NodeID src, NodeID dst, u32_t opcode)
+{
+    UnaryOPStmt* edge = pag->addUnaryOPStmt(src, dst, opcode);
+    if (edge)
+    {
+        edge->setValue(pag->getGNode(dst));
+        edge->setBB(currentBB);
+        edge->setICFGNode(currentICFGNode);
+        if (currentICFGNode)
+        {
+            pag->addToSVFStmtList(currentICFGNode, edge);
+            currentICFGNode->addSVFStmt(edge);
+        }
+    }
+}
+
+void CTSSVFIRBuilder::addBranchEdge(NodeID br, NodeID cond,
+                                     const BranchStmt::SuccAndCondPairVec& succs)
+{
+    BranchStmt* edge = pag->addBranchStmt(br, cond, succs);
+    if (edge)
+    {
+        edge->setValue(pag->getGNode(cond));
+        edge->setBB(currentBB);
+        edge->setICFGNode(currentICFGNode);
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -644,9 +725,29 @@ void CTSSVFIRBuilder::processExpression(TSNode expr, CTSSourceFile* file)
     }
     else if (strcmp(type, "update_expression") == 0)
     {
-        // Handle ++/--
+        // Handle ++/-- : load, add/sub 1, store back
         TSNode operand = ts_node_named_child(expr, 0);
-        getExprValue(operand, file);
+        NodeID loadVal = getExprValue(operand, file);
+        NodeID one = createConstIntNode(1, currentICFGNode);
+        NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
+
+        // Determine if ++ or --
+        uint32_t childCount = ts_node_child_count(expr);
+        bool isIncrement = true;
+        for (uint32_t i = 0; i < childCount; i++)
+        {
+            TSNode child = ts_node_child(expr, i);
+            std::string childText = CTSParser::getNodeText(child, file->getSource());
+            if (childText == "--") { isIncrement = false; break; }
+        }
+
+        addBinaryOPEdge(loadVal, one, result,
+                         isIncrement ? BinaryOPStmt::Add : BinaryOPStmt::Sub);
+
+        // Store result back to lvalue
+        NodeID lval = getExprLValue(operand, file);
+        if (lval != blackHoleNode)
+            addStoreEdge(result, lval, currentICFGNode);
     }
     else
     {
@@ -675,13 +776,41 @@ void CTSSVFIRBuilder::processAssignment(TSNode assign, CTSSourceFile* file)
     NodeID rhsVal = getExprValue(right, file);
 
     // For compound assignment (a += 2), read-modify-write:
-    // load a, compute (a + 2), store result back
+    // load a, compute (a op 2), store result back
     if (isCompound)
     {
-        // Load current value of LHS (side effect: produces LoadStmt)
-        getExprValue(left, file);
-        // The result of the compound op is a new value
-        rhsVal = createValNode(moduleSet->getPtrType(), currentICFGNode);
+        // Load current value of LHS
+        NodeID lhsLoadVal = getExprValue(left, file);
+
+        // Determine the binary op from the compound operator
+        TSNode opNode = ts_node_child(assign, 1);
+        std::string op = CTSParser::getNodeText(opNode, file->getSource());
+        NodeID compoundResult = createValNode(moduleSet->getPtrType(), currentICFGNode);
+
+        if (op == "+=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Add);
+        else if (op == "-=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Sub);
+        else if (op == "*=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Mul);
+        else if (op == "/=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::SDiv);
+        else if (op == "%=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::SRem);
+        else if (op == "&=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::And);
+        else if (op == "|=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Or);
+        else if (op == "^=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Xor);
+        else if (op == "<<=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::Shl);
+        else if (op == ">>=")
+            addBinaryOPEdge(lhsLoadVal, rhsVal, compoundResult, BinaryOPStmt::AShr);
+        else
+            addCopyEdge(lhsLoadVal, compoundResult);
+
+        rhsVal = compoundResult;
     }
 
     const char* leftType = ts_node_type(left);
@@ -783,50 +912,55 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         ? SVFUtil::dyn_cast<CallICFGNode>(callNodeForThis)
         : SVFUtil::dyn_cast<CallICFGNode>(currentICFGNode);
 
-    if (callICFGNode && calleeFunObj)
+    if (callICFGNode)
     {
         // Save and update currentICFGNode so node creation attaches to the right ICFG node
         ICFGNode* savedICFGNode = currentICFGNode;
         currentICFGNode = callICFGNode;
 
-        ICFG* icfg = pag->getICFG();
-
         // Register call site
         pag->addCallSite(callICFGNode);
 
-        // Add actual arguments to call site
+        // Add actual arguments to call site (for ALL functions, including externals)
         for (u32_t i = 0; i < argVals.size(); i++)
         {
-            pag->addCallSiteArgs(callICFGNode,
-                SVFUtil::cast<ValVar>(pag->getGNode(argVals[i])));
+            SVFVar* argNode = pag->getGNode(argVals[i]);
+            if (SVFUtil::isa<ValVar>(argNode))
+                pag->addCallSiteArgs(callICFGNode, SVFUtil::cast<ValVar>(argNode));
         }
 
-        // CallPE: actual_arg[i] → formal_arg[i]
-        FunEntryICFGNode* entry = icfg->getFunEntryICFGNode(calleeFunObj);
-        if (entry)
+        if (calleeFunObj)
         {
-            u32_t minArgs = std::min((u32_t)argVals.size(), calleeFunObj->arg_size());
-            for (u32_t i = 0; i < minArgs; i++)
+            ICFG* icfg = pag->getICFG();
+
+            // CallPE: actual_arg[i] → formal_arg[i]
+            FunEntryICFGNode* entry = icfg->getFunEntryICFGNode(calleeFunObj);
+            if (entry)
             {
-                addCallEdge(argVals[i], calleeFunObj->getArg(i)->getId(),
-                           callICFGNode, entry);
+                u32_t minArgs = std::min((u32_t)argVals.size(), calleeFunObj->arg_size());
+                for (u32_t i = 0; i < minArgs; i++)
+                {
+                    addCallEdge(argVals[i], calleeFunObj->getArg(i)->getId(),
+                               callICFGNode, entry);
+                }
             }
-        }
 
-        // RetPE: callee_ret → call_result
-        if (pag->funHasRet(calleeFunObj))
-        {
-            FunExitICFGNode* exit = icfg->getFunExitICFGNode(calleeFunObj);
-            NodeID resultNode = createValNode(moduleSet->getPtrType(), callICFGNode);
-            addRetEdge(pag->getFunRet(calleeFunObj)->getId(), resultNode,
-                      callICFGNode, exit);
-            // Register return value in call site
-            RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
-            if (retICFGNode)
-                pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
+            // RetPE: callee_ret → call_result
+            if (pag->funHasRet(calleeFunObj))
+            {
+                ICFG* icfg = pag->getICFG();
+                FunExitICFGNode* exit = icfg->getFunExitICFGNode(calleeFunObj);
+                NodeID resultNode = createValNode(moduleSet->getPtrType(), callICFGNode);
+                addRetEdge(pag->getFunRet(calleeFunObj)->getId(), resultNode,
+                          callICFGNode, exit);
+                // Register return value in call site
+                RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
+                if (retICFGNode)
+                    pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
 
-            currentICFGNode = savedICFGNode;
-            return resultNode;
+                currentICFGNode = savedICFGNode;
+                return resultNode;
+            }
         }
 
         currentICFGNode = savedICFGNode;
@@ -852,18 +986,68 @@ void CTSSVFIRBuilder::processReturn(TSNode ret, CTSSourceFile* file)
 
 void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
 {
-    // Process condition
+    // Process condition and create condition variable for branch pruning
     TSNode cond = ts_node_child_by_field_name(ifStmt, "condition", 9);
+    NodeID condVal = blackHoleNode;
     if (!ts_node_is_null(cond))
     {
-        getExprValue(cond, file);
+        // Strip parenthesized_expression wrapper (tree-sitter wraps if-conditions)
+        TSNode innerCond = cond;
+        if (strcmp(ts_node_type(cond), "parenthesized_expression") == 0)
+            innerCond = ts_node_named_child(cond, 0);
+        condVal = getExprValue(innerCond, file);
+    }
+
+    // Set branch conditions on ICFG edges from the condition node
+    // The condition node is the ICFG node for this if_statement
+    ICFGNode* condICFGNode = getICFGNode(ifStmt, file);
+    if (condICFGNode && condVal != blackHoleNode)
+    {
+        const SVFVar* condVar = pag->getGNode(condVal);
+        // Get the ICFG nodes for then/else branches to identify edges
+        TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+        ICFGNode* thenICFGNode = !ts_node_is_null(consequence) ?
+            getICFGNode(consequence, file) : nullptr;
+
+        for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+        {
+            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+            {
+                if (thenICFGNode && edge->getDstNode() == thenICFGNode)
+                {
+                    // Then-branch: condition value = 1 (true)
+                    icfgBuilder->setEdgeCondition(edge, condVar, 1);
+                }
+                else
+                {
+                    // Else-branch or fallthrough to merge: condition value = 0 (false)
+                    icfgBuilder->setEdgeCondition(edge, condVar, 0);
+                }
+            }
+        }
+
+        // Create BranchStmt for the condition
+        BranchStmt::SuccAndCondPairVec succs;
+        for (auto it = condICFGNode->OutEdgeBegin(); it != condICFGNode->OutEdgeEnd(); ++it)
+        {
+            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+            {
+                const ICFGNode* dst = edge->getDstNode();
+                s32_t condValInt = (thenICFGNode && dst == thenICFGNode) ? 1 : 0;
+                succs.push_back(std::make_pair(dst, condValInt));
+            }
+        }
+        if (!succs.empty())
+        {
+            addBranchEdge(condVal, condVal, succs);
+        }
     }
 
     // Process then branch
-    TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
-    if (!ts_node_is_null(consequence))
+    TSNode consequence2 = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+    if (!ts_node_is_null(consequence2))
     {
-        processStatement(consequence, file);
+        processStatement(consequence2, file);
     }
 
     // Process else branch (unwrap else_clause to get its body)
@@ -1043,14 +1227,41 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
         return createConstNullNode(currentICFGNode);
     }
 
-    // Pointer dereference *p
+    // Pointer expression: *p (dereference) or &x (address-of)
     if (strcmp(type, "pointer_expression") == 0)
     {
+        // Check operator: tree-sitter-c uses pointer_expression for both * and &
+        TSNode opNode = ts_node_child(expr, 0);
+        std::string op = CTSParser::getNodeText(opNode, file->getSource());
         TSNode operand = ts_node_named_child(expr, 0);
-        NodeID ptrVal = getExprValue(operand, file);
-        NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
-        addLoadEdge(ptrVal, result);
-        return result;
+
+        if (op == "&")
+        {
+            // Address-of: return the lvalue (pointer to the variable)
+            if (strcmp(ts_node_type(operand), "identifier") == 0)
+            {
+                std::string name = CTSParser::getNodeText(operand, file->getSource());
+                auto* varInfo = scopeManager->lookupVar(name);
+                if (varInfo)
+                    return varInfo->valNode;
+                CTSGlobalVar* gvar = moduleSet->getGlobalVar(name);
+                if (gvar)
+                {
+                    NodeID gvalId = moduleSet->getValID(gvar->getNode(), gvar->getSourceFile());
+                    if (gvalId != (NodeID)-1)
+                        return gvalId;
+                }
+            }
+            return getExprLValue(operand, file);
+        }
+        else
+        {
+            // Dereference: *p → load from pointer
+            NodeID ptrVal = getExprValue(operand, file);
+            NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
+            addLoadEdge(ptrVal, result);
+            return result;
+        }
     }
 
     // Address-of &x
@@ -1075,7 +1286,31 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
         }
         // Other unary operators (-, !, ~)
         TSNode operand = ts_node_named_child(expr, 0);
-        return getExprValue(operand, file);
+        NodeID operandVal = getExprValue(operand, file);
+        NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
+        if (opStr == "-")
+        {
+            // Negate: 0 - operand
+            NodeID zero = createConstIntNode(0, currentICFGNode);
+            addBinaryOPEdge(zero, operandVal, result, BinaryOPStmt::Sub);
+        }
+        else if (opStr == "!")
+        {
+            // Logical NOT: operand == 0
+            NodeID zero = createConstIntNode(0, currentICFGNode);
+            addCmpEdge(operandVal, zero, result, CmpStmt::ICMP_EQ);
+        }
+        else if (opStr == "~")
+        {
+            // Bitwise NOT: operand ^ -1
+            NodeID allOnes = createConstIntNode(-1, currentICFGNode);
+            addBinaryOPEdge(operandVal, allOnes, result, BinaryOPStmt::Xor);
+        }
+        else
+        {
+            addCopyEdge(operandVal, result);
+        }
+        return result;
     }
 
     // Binary expression
@@ -1083,9 +1318,61 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
     {
         TSNode left = ts_node_child_by_field_name(expr, "left", 4);
         TSNode right = ts_node_child_by_field_name(expr, "right", 5);
-        getExprValue(left, file);
-        getExprValue(right, file);
-        return createValNode(moduleSet->getPtrType(), currentICFGNode);
+        NodeID lhsVal = getExprValue(left, file);
+        NodeID rhsVal = getExprValue(right, file);
+        NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
+
+        // Get operator string
+        TSNode opNode = ts_node_child(expr, 1);
+        std::string op = CTSParser::getNodeText(opNode, file->getSource());
+
+        // Comparison operators → CmpStmt
+        if (op == "==")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_EQ);
+        else if (op == "!=")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_NE);
+        else if (op == ">")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_SGT);
+        else if (op == ">=")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_SGE);
+        else if (op == "<")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_SLT);
+        else if (op == "<=")
+            addCmpEdge(lhsVal, rhsVal, result, CmpStmt::ICMP_SLE);
+        // Arithmetic operators → BinaryOPStmt
+        else if (op == "+")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Add);
+        else if (op == "-")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Sub);
+        else if (op == "*")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Mul);
+        else if (op == "/")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::SDiv);
+        else if (op == "%")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::SRem);
+        // Bitwise operators
+        else if (op == "&")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::And);
+        else if (op == "|")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Or);
+        else if (op == "^")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Xor);
+        else if (op == "<<")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Shl);
+        else if (op == ">>")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::AShr);
+        // Logical operators (&&, ||) — model as bitwise AND/OR of boolean values
+        else if (op == "&&")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::And);
+        else if (op == "||")
+            addBinaryOPEdge(lhsVal, rhsVal, result, BinaryOPStmt::Or);
+        else
+        {
+            // Unknown operator: just copy from lhs as fallback
+            addCopyEdge(lhsVal, result);
+        }
+
+        return result;
     }
 
     // Call expression → evaluate and return result

@@ -86,6 +86,7 @@ int main(int argc, char** argv)
     CTSSVFIRBuilder builder;
     SVFIR* pag = builder.build(sourceFiles);
 
+    // Debug: dump all ICFG nodes and their statements
     // Step 2: Pointer analysis (LLVM-free, works on SVFIR)
     AndersenWaveDiff* ander = AndersenWaveDiff::createAndersenWaveDiff(pag);
     CallGraph* callgraph = ander->getCallGraph();
