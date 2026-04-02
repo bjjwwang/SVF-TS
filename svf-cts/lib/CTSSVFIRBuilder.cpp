@@ -3,6 +3,7 @@
 #include "SVFIR/SVFStatements.h"
 #include "SVFIR/ObjTypeInfo.h"
 #include "Graphs/ICFGNode.h"
+#include "Graphs/ICFGEdge.h"
 #include "Graphs/BasicBlockG.h"
 #include "Graphs/CHG.h"
 #include "Graphs/CallGraph.h"
@@ -319,13 +320,44 @@ void CTSSVFIRBuilder::addGepEdge(NodeID src, NodeID dst, const AccessPath& ap, b
 void CTSSVFIRBuilder::addCallEdge(NodeID src, NodeID dst, const CallICFGNode* cs,
                                    const FunEntryICFGNode* entry)
 {
-    pag->addCallPE(src, dst, cs, entry);
+    CallPE* callPE = pag->addCallPE(src, dst, cs, entry);
+    if (callPE)
+    {
+        // Register on the CallICFGNode's statement list (so AE can see it)
+        ICFGNode* callNode = const_cast<ICFGNode*>(static_cast<const ICFGNode*>(cs));
+        pag->addToSVFStmtList(callNode, callPE);
+        callNode->addSVFStmt(callPE);
+
+        // Register on the CallCFGEdge (matching LLVM frontend behavior)
+        CallICFGNode* callICFG = const_cast<CallICFGNode*>(cs);
+        FunEntryICFGNode* entryICFG = const_cast<FunEntryICFGNode*>(entry);
+        if (ICFGEdge* icfgEdge = pag->getICFG()->hasInterICFGEdge(callICFG, entryICFG, ICFGEdge::CallCF))
+            SVFUtil::cast<CallCFGEdge>(icfgEdge)->addCallPE(callPE);
+    }
 }
 
 void CTSSVFIRBuilder::addRetEdge(NodeID src, NodeID dst, const CallICFGNode* cs,
                                   const FunExitICFGNode* exit)
 {
-    pag->addRetPE(src, dst, cs, exit);
+    RetPE* retPE = pag->addRetPE(src, dst, cs, exit);
+    if (retPE)
+    {
+        // Register on the RetICFGNode's statement list (so AE can see it)
+        RetICFGNode* retNode = const_cast<RetICFGNode*>(cs->getRetICFGNode());
+        if (retNode)
+        {
+            pag->addToSVFStmtList(retNode, retPE);
+            retNode->addSVFStmt(retPE);
+        }
+
+        // Register on the RetCFGEdge (matching LLVM frontend behavior)
+        FunExitICFGNode* exitICFG = const_cast<FunExitICFGNode*>(exit);
+        if (retNode)
+        {
+            if (ICFGEdge* icfgEdge = pag->getICFG()->hasInterICFGEdge(exitICFG, retNode, ICFGEdge::RetCF))
+                SVFUtil::cast<RetCFGEdge>(icfgEdge)->addRetPE(retPE);
+        }
+    }
 }
 
 void CTSSVFIRBuilder::addBinaryOPEdge(NodeID op1, NodeID op2, NodeID dst, u32_t opcode)
@@ -964,15 +996,22 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
             {
                 ICFG* icfg = pag->getICFG();
                 FunExitICFGNode* exit = icfg->getFunExitICFGNode(calleeFunObj);
-                NodeID resultNode = createValNode(moduleSet->getPtrType(), callICFGNode);
+                RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
+
+                // Create result node on the RetICFGNode so that any subsequent
+                // StoreStmt using this result is attached AFTER the RetPE
+                NodeID resultNode = createValNode(moduleSet->getPtrType(),
+                    retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : callICFGNode);
                 addRetEdge(pag->getFunRet(calleeFunObj)->getId(), resultNode,
                           callICFGNode, exit);
                 // Register return value in call site
-                RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
                 if (retICFGNode)
                     pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
 
-                currentICFGNode = savedICFGNode;
+                // Switch currentICFGNode to RetICFGNode so that callers
+                // (e.g. processDeclaration) attach StoreStmt to the ret node
+                // where the return value is available (after RetPE executes)
+                currentICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : savedICFGNode;
                 return resultNode;
             }
         }
