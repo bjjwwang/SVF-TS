@@ -504,12 +504,13 @@ void CTSSVFIRBuilder::createFunctionObjects()
             if (paramName.empty())
                 paramName = "arg" + std::to_string(i);
 
-            const SVFType* paramType = resolveType(
-                CTSParser::getTypeSpecifier(param), file);
-
+            // Use pointer type for all args so that isPTAEdge() returns true
+            // for CallPE edges involving pointer parameters. Without this,
+            // Andersen's constraint graph ignores CallPE edges and pointer
+            // arguments (like &a) are not propagated to formal parameters.
             NodeID argId = NodeIDAllocator::get()->allocateValueId();
             pag->addArgValNode(argId, i, nullptr, funObj,
-                               paramType ? paramType : moduleSet->getPtrType());
+                               moduleSet->getPtrType());
             pag->getGNode(argId)->setName(paramName);
             pag->getGNode(argId)->setSourceLoc(
                 CTSParser::formatSourceLoc(param, file->getFilePath()));
