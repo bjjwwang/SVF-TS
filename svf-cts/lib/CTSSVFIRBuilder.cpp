@@ -978,39 +978,55 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         if (calleeFunObj)
         {
             ICFG* icfg = pag->getICFG();
+            bool isExternal = SVFUtil::isExtCall(calleeFunObj);
 
-            // CallPE: actual_arg[i] → formal_arg[i]
-            FunEntryICFGNode* entry = icfg->getFunEntryICFGNode(calleeFunObj);
-            if (entry)
+            if (!isExternal)
             {
-                u32_t minArgs = std::min((u32_t)argVals.size(), calleeFunObj->arg_size());
-                for (u32_t i = 0; i < minArgs; i++)
+                // Internal function: create CallPE/RetPE for interprocedural analysis
+                // CallPE: actual_arg[i] → formal_arg[i]
+                FunEntryICFGNode* entry = icfg->getFunEntryICFGNode(calleeFunObj);
+                if (entry)
                 {
-                    addCallEdge(argVals[i], calleeFunObj->getArg(i)->getId(),
-                               callICFGNode, entry);
+                    u32_t minArgs = std::min((u32_t)argVals.size(), calleeFunObj->arg_size());
+                    for (u32_t i = 0; i < minArgs; i++)
+                    {
+                        addCallEdge(argVals[i], calleeFunObj->getArg(i)->getId(),
+                                   callICFGNode, entry);
+                    }
+                }
+
+                // RetPE: callee_ret → call_result
+                if (pag->funHasRet(calleeFunObj))
+                {
+                    FunExitICFGNode* exit = icfg->getFunExitICFGNode(calleeFunObj);
+                    RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
+
+                    // Create result node on the RetICFGNode so that any subsequent
+                    // StoreStmt using this result is attached AFTER the RetPE
+                    NodeID resultNode = createValNode(moduleSet->getPtrType(),
+                        retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : callICFGNode);
+                    addRetEdge(pag->getFunRet(calleeFunObj)->getId(), resultNode,
+                              callICFGNode, exit);
+                    if (retICFGNode)
+                        pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
+
+                    currentICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : savedICFGNode;
+                    return resultNode;
                 }
             }
-
-            // RetPE: callee_ret → call_result
-            if (pag->funHasRet(calleeFunObj))
+            else
             {
-                ICFG* icfg = pag->getICFG();
-                FunExitICFGNode* exit = icfg->getFunExitICFGNode(calleeFunObj);
+                // External function: NO RetPE (callee has no body to return from).
+                // AE's handleExtAPI sets the return value directly on actualRet.
                 RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
-
-                // Create result node on the RetICFGNode so that any subsequent
-                // StoreStmt using this result is attached AFTER the RetPE
+                // Create result on retNode so handleExtAPI sets the value before
+                // any subsequent StoreStmt uses it
                 NodeID resultNode = createValNode(moduleSet->getPtrType(),
                     retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : callICFGNode);
-                addRetEdge(pag->getFunRet(calleeFunObj)->getId(), resultNode,
-                          callICFGNode, exit);
-                // Register return value in call site
                 if (retICFGNode)
                     pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
 
-                // Switch currentICFGNode to RetICFGNode so that callers
-                // (e.g. processDeclaration) attach StoreStmt to the ret node
-                // where the return value is available (after RetPE executes)
+                // Switch to retNode for subsequent stores
                 currentICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : savedICFGNode;
                 return resultNode;
             }
