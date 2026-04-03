@@ -309,11 +309,71 @@ CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processStatement(
 CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processIfStmt(
     TSNode ifStmt, CTSSourceFile* file, const FunObjVar* func, const SVFBasicBlock* bb)
 {
-    // Condition node
+    ICFGNode* firstNode = nullptr;  // first node in the chain (call or condNode)
+
+    // Step 1: Process any function calls inside the condition BEFORE the condNode.
+    // e.g., if(nd()) or if(foo() > 5) — the call needs its own CallICFGNode.
+    TSNode condExpr = ts_node_child_by_field_name(ifStmt, "condition", 9);
+    if (!ts_node_is_null(condExpr) &&
+        strcmp(ts_node_type(condExpr), "parenthesized_expression") == 0)
+        condExpr = ts_node_named_child(condExpr, 0);
+
+    ICFGNode* condCallLast = nullptr;  // last node from condition's call chain
+    if (!ts_node_is_null(condExpr))
+    {
+        std::vector<TSNode> condCalls;
+        findAllCallExprs(condExpr, condCalls);
+        if (!condCalls.empty())
+        {
+            // Build call chain for calls in condition (same logic as processStatement)
+            ICFGNode* chainFirst = nullptr;
+            ICFGNode* chainLast = nullptr;
+            for (const TSNode& callExpr : condCalls)
+            {
+                TSNode calleeFuncNode = ts_node_child_by_field_name(callExpr, "function", 8);
+                const FunObjVar* calledFunc = lookupCallee(calleeFuncNode, file);
+                if (!calledFunc) continue;
+
+                CallICFGNode* callNode = addCallICFGNode(
+                    bb, moduleSet->getPtrType(), calledFunc,
+                    false, false, 0, "");
+                const_cast<SVFBasicBlock*>(bb)->addICFGNode(callNode);
+                callNode->setSourceLoc(CTSParser::formatSourceLoc(callExpr, file->getFilePath()));
+                recordStmtNode(callExpr, file, callNode);
+
+                RetICFGNode* retNode = addRetICFGNode(callNode);
+                const_cast<SVFBasicBlock*>(bb)->addICFGNode(retNode);
+
+                if (SVFUtil::isExtCall(calledFunc))
+                    addIntraEdge(callNode, retNode);
+                else
+                {
+                    FunEntryICFGNode* calleeEntry = getFunEntryICFGNode(calledFunc);
+                    if (calleeEntry) addCallEdge(callNode, calleeEntry);
+                    FunExitICFGNode* calleeExit = getFunExitICFGNode(calledFunc);
+                    if (calleeExit) addRetEdge(calleeExit, retNode);
+                }
+
+                if (chainLast) addIntraEdge(chainLast, callNode);
+                if (!chainFirst) chainFirst = callNode;
+                chainLast = retNode;
+            }
+            firstNode = chainFirst;
+            condCallLast = chainLast;
+        }
+    }
+
+    // Step 2: Condition node (for branch decision)
     IntraICFGNode* condNode = addIntraICFGNode(bb, false);
     const_cast<SVFBasicBlock*>(bb)->addICFGNode(condNode);
     condNode->setSourceLoc(CTSParser::formatSourceLoc(ifStmt, file->getFilePath()));
     recordStmtNode(ifStmt, file, condNode);
+
+    // Chain condition calls → condNode
+    if (condCallLast)
+        addIntraEdge(condCallLast, condNode);
+    if (!firstNode)
+        firstNode = condNode;
 
     // Merge node (after if/else)
     IntraICFGNode* mergeNode = addIntraICFGNode(bb, false);
@@ -364,7 +424,7 @@ CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processIfStmt(
         addIntraEdge(condNode, mergeNode);
     }
 
-    return {condNode, mergeNode};
+    return {firstNode, mergeNode};
 }
 
 CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processWhileStmt(
