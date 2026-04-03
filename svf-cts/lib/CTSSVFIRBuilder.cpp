@@ -584,6 +584,13 @@ void CTSSVFIRBuilder::processFunction(CTSFunction* func)
     const FunObjVar* funObj = func->getFunObjVar();
     CTSSourceFile* file = func->getSourceFile();
 
+    // Set currentICFGNode to FunEntry so parameter AddrStmt/StoreStmt
+    // are registered on the entry node (AE needs to see them)
+    ICFG* icfg = pag->getICFG();
+    FunEntryICFGNode* entryNode = icfg->getFunEntryICFGNode(funObj);
+    if (entryNode)
+        currentICFGNode = entryNode;
+
     // Use existing ArgValVar nodes (created in createFunctionObjects())
     // and create stack copies for local scope
     const auto& params = func->getParams();
