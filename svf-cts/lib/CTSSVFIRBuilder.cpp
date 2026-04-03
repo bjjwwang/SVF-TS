@@ -324,6 +324,8 @@ void CTSSVFIRBuilder::addCallEdge(NodeID src, NodeID dst, const CallICFGNode* cs
     CallPE* callPE = pag->addCallPE(src, dst, cs, entry);
     if (callPE)
     {
+        callPE->setValue(pag->getGNode(dst));
+
         // Register on the CallICFGNode's statement list (so AE can see it)
         ICFGNode* callNode = const_cast<ICFGNode*>(static_cast<const ICFGNode*>(cs));
         pag->addToSVFStmtList(callNode, callPE);
@@ -343,6 +345,8 @@ void CTSSVFIRBuilder::addRetEdge(NodeID src, NodeID dst, const CallICFGNode* cs,
     RetPE* retPE = pag->addRetPE(src, dst, cs, exit);
     if (retPE)
     {
+        retPE->setValue(pag->getGNode(dst));
+
         // Register on the RetICFGNode's statement list (so AE can see it)
         RetICFGNode* retNode = const_cast<RetICFGNode*>(cs->getRetICFGNode());
         if (retNode)
