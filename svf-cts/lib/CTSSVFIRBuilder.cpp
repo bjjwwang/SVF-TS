@@ -1109,6 +1109,8 @@ void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
             if (partNode) currentICFGNode = partNode;
             NodeID partCondVal = getExprValue(condParts[i], file);
 
+            std::cerr << "[SVFIR-&&]   partCondVal=" << partCondVal
+                      << " currentICFGNode=" << (currentICFGNode ? (int)currentICFGNode->getId() : -1) << std::endl;
             if (partNode && partCondVal != blackHoleNode)
             {
                 const SVFVar* partCondVar = pag->getGNode(partCondVal);
@@ -1117,55 +1119,69 @@ void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
                     if (SVFUtil::isa<IntraCFGEdge>(*it))
                         dstNodes.insert((*it)->getDstNode());
 
+                std::cerr << "[SVFIR-&&]   dstNodes=" << dstNodes.size() << std::endl;
                 if (dstNodes.size() >= 2)
                 {
-                    // Find the "true" target: next condNode for &&, then-body for ||
+                    // Find the "true" target
                     ICFGNode* trueTarget = nullptr;
                     if (logicalOp == "&&")
                     {
-                        // For &&: true goes to next condNode (or then-body for last)
                         if (i + 1 < condParts.size())
                             trueTarget = getICFGNode(condParts[i + 1], file);
-                        // For last condNode, true goes to then-body (non-else successor)
-                    }
-                    // else for ||: true goes to then-body (always)
-
-                    for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
-                    {
-                        if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                        else
                         {
-                            s32_t cv;
-                            if (trueTarget)
-                                cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
-                            else
+                            // Last condNode: true → then-body. Find it.
+                            TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+                            if (!ts_node_is_null(consequence))
                             {
-                                // Last condNode for &&, or any for ||:
-                                // Heuristic: the successor with lower ID that isn't else/merge
-                                // is the "true" branch. Use same logic as single-condition.
-                                // For now, identify by looking at which dest is also a condNode
-                                // vs which is then-body/merge.
-                                // Simplest: for last &&, pick the then-body (first successor)
-                                cv = (it == partNode->OutEdgeBegin()) ? 1 : 0;
+                                trueTarget = getICFGNode(consequence, file);
+                                if (!trueTarget && strcmp(ts_node_type(consequence), "compound_statement") == 0)
+                                {
+                                    uint32_t cnt = ts_node_named_child_count(consequence);
+                                    for (uint32_t j = 0; j < cnt && !trueTarget; j++)
+                                        trueTarget = getICFGNode(ts_node_named_child(consequence, j), file);
+                                }
                             }
-                            icfgBuilder->setEdgeCondition(edge, partCondVar, cv);
+                        }
+                    }
+                    else // ||
+                    {
+                        // true → then-body always
+                        TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+                        if (!ts_node_is_null(consequence))
+                        {
+                            trueTarget = getICFGNode(consequence, file);
+                            if (!trueTarget && strcmp(ts_node_type(consequence), "compound_statement") == 0)
+                            {
+                                uint32_t cnt = ts_node_named_child_count(consequence);
+                                for (uint32_t j = 0; j < cnt && !trueTarget; j++)
+                                    trueTarget = getICFGNode(ts_node_named_child(consequence, j), file);
+                            }
                         }
                     }
 
-                    BranchStmt::SuccAndCondPairVec succs;
-                    for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
+                    if (trueTarget)
                     {
-                        if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                        for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
                         {
-                            s32_t cv;
-                            if (trueTarget)
-                                cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
-                            else
-                                cv = (it == partNode->OutEdgeBegin()) ? 1 : 0;
-                            succs.push_back(std::make_pair(edge->getDstNode(), cv));
+                            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                            {
+                                s32_t cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
+                                icfgBuilder->setEdgeCondition(edge, partCondVar, cv);
+                            }
                         }
+                        BranchStmt::SuccAndCondPairVec succs;
+                        for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
+                        {
+                            if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                            {
+                                s32_t cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
+                                succs.push_back(std::make_pair(edge->getDstNode(), cv));
+                            }
+                        }
+                        if (!succs.empty())
+                            addBranchEdge(partCondVal, partCondVal, succs);
                     }
-                    if (!succs.empty())
-                        addBranchEdge(partCondVal, partCondVal, succs);
                 }
             }
         }
