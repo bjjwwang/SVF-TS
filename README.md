@@ -3,18 +3,20 @@
 
 ## SVF-TS Progress: Tree-Sitter C Frontend (Phase 1 — AE)
 
-**Target**: 108 ae\_assert\_tests from TS-TestSuite | **Current**: 66 / 108 (61%) | **Baseline**: 47 / 108 (43%)
+**Target**: 108 ae\_assert\_tests from TS-TestSuite | **Current**: 71 / 108 (65%) | **Baseline**: 47 / 108 (43%)
 
-### Remaining Failures (42)
+### Remaining Failures (37)
 
 | Category | Count | Root Cause | Status |
 |----------|-------|------------|--------|
-| `foo(&a)` — callee's store not visible to caller | 10 | PTA now correct (CallPE enters constraint graph). AE's `handleFunCall` copies callNode state to retNode but doesn't merge FunExit's store effects back to caller's memory objects. | PTA fixed, AE propagation TODO |
-| if/else + rand + constraint narrowing | 6 | Branch constraint narrowing works for single `if`. Compound conditions with external calls (rand/scanf) + if/else have store/load ordering issues in abstract state. | Partially fixed |
-| `&&` condition (`if(a>5 && a<7)`) | 5 | `&&` now returns rhs CmpStmt (approximate short-circuit). But only one-sided narrowing; full short-circuit needs nested ICFG branches. | Partially fixed |
-| External function memory effects (scanf/memset/memcpy) | 3 | These functions write to memory through pointer arguments. Not modeled. | TODO |
-| Cast truncation (`(int8_t)256 == 0`) | 1 | CopyStmt doesn't model integer truncation semantics. | TODO |
-| Array copy (`char s[2]={'A','B'}; s[1]`) | 1 | Initializer list partially supported but array element tracking imprecise. | TODO |
+| if/else + scanf/rand (both branches have assert) | 6 | `scanf("%d", &a)` writes to `a` via pointer — memory effect not modeled. `a` stays uninitialized instead of top. Branch constraint works for single if, but if/else needs `a` to have a value first. | TODO: model scanf pointer write |
+| `&&` condition (`if(a>0 && a<=5)`) | 5 | `&&` returns rhs CmpStmt only. Single-side narrowing (e.g., `a<=5` but not `a>0`). Correct fix: nested ICFG branches (short-circuit). | Partial |
+| Array passed to function (`getValue(arr, 1)`) | 2 | Array base address passed via CallPE, but GEP inside callee may not resolve correctly. | TODO |
+| Array initializer list (`char s[2]={'A','B'}`) | 2 | Initializer list returns first element only; `s[1]` can't get `'B'`. | TODO |
+| External function memory effects (memset/memcpy/alloca) | 2 | These write to memory through pointers. Not modeled. | TODO |
+| Function pointer indirect call (`(*q)(&y)`) | 1 | Indirect call resolution via PTA not wired up in CTS. | TODO |
+| goto/label (`goto LOOP`) | 1 | ICFG builder doesn't handle goto. | TODO |
+| Cast truncation (`(int8_t)256 == 0`) | 1 | CopyStmt doesn't model integer truncation. | TODO |
 | `if(nd())` — function call in condition | 6 | ICFG builder doesn't create CallICFGNode for calls inside if/while/for conditions. | TODO |
 | Complex C features (2D array, typedef struct, enum, macro) | 10 | Tree-Sitter parses these but SVFIR builder doesn't handle them. | TODO |
 
@@ -29,6 +31,7 @@
 7. **ArgValVar type** — use pointer type so CallPE enters Andersen's constraint graph
 8. **`&&`/`||` modeling** — return CmpStmt result instead of BinaryOPStmt::And
 9. **`true`/`false`/`NULL`** constants, char literals, hex/octal numbers, update expressions
+10. **Parameter processing** — set currentICFGNode to FunEntry before creating param AddrStmt/StoreStmt (was orphaned, AE couldn't see them)
 
 ---
 
