@@ -5,6 +5,7 @@
 #include "Util/SVFUtil.h"
 
 #include <cstring>
+#include <functional>
 
 namespace SVF
 {
@@ -363,65 +364,123 @@ CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processIfStmt(
         }
     }
 
-    // Step 2: Condition node (for branch decision)
-    IntraICFGNode* condNode = addIntraICFGNode(bb, false);
-    const_cast<SVFBasicBlock*>(bb)->addICFGNode(condNode);
-    condNode->setSourceLoc(CTSParser::formatSourceLoc(ifStmt, file->getFilePath()));
-    recordStmtNode(ifStmt, file, condNode);
+    // Step 2: Build condNode chain.
+    // For && : condNodeA → condNodeB → then, condNodeA → else/merge, condNodeB → else/merge
+    // For || : condNodeA → then, condNodeA → condNodeB, condNodeB → then, condNodeB → else/merge
+    // Single : condNode → then, condNode → else/merge
 
-    // Chain condition calls → condNode
+    // Flatten && / || sub-conditions
+    std::vector<TSNode> condParts;
+    bool isAnd = false, isOr = false;
+    if (!ts_node_is_null(condExpr) &&
+        strcmp(ts_node_type(condExpr), "binary_expression") == 0)
+    {
+        TSNode opNode = ts_node_child(condExpr, 1);
+        std::string op = CTSParser::getNodeText(opNode, file->getSource());
+        if (op == "&&") isAnd = true;
+        else if (op == "||") isOr = true;
+    }
+    if (isAnd || isOr)
+    {
+        // Flatten left-associative chain
+        std::function<void(TSNode)> flatten = [&](TSNode expr) {
+            if (strcmp(ts_node_type(expr), "binary_expression") == 0)
+            {
+                TSNode op2 = ts_node_child(expr, 1);
+                std::string s = CTSParser::getNodeText(op2, file->getSource());
+                if ((isAnd && s == "&&") || (isOr && s == "||"))
+                {
+                    flatten(ts_node_child_by_field_name(expr, "left", 4));
+                    flatten(ts_node_child_by_field_name(expr, "right", 5));
+                    return;
+                }
+            }
+            condParts.push_back(expr);
+        };
+        flatten(condExpr);
+    }
+    else
+        condParts.push_back(condExpr);
+
+    // Create one condNode per sub-condition, chained sequentially
+    std::vector<IntraICFGNode*> condNodes;
+    for (size_t i = 0; i < condParts.size(); i++)
+    {
+        IntraICFGNode* cn = addIntraICFGNode(bb, false);
+        const_cast<SVFBasicBlock*>(bb)->addICFGNode(cn);
+        cn->setSourceLoc(CTSParser::formatSourceLoc(condParts[i], file->getFilePath()));
+        // Record sub-expression → condNode, but don't overwrite call_expression
+        // mappings that were created in Step 1
+        if (strcmp(ts_node_type(condParts[i]), "call_expression") != 0)
+            recordStmtNode(condParts[i], file, cn);
+        if (i == 0) recordStmtNode(ifStmt, file, cn);  // ifStmt maps to first condNode
+        condNodes.push_back(cn);
+    }
+    // Chain: callChain → condNode[0] → condNode[1] → ...
     if (condCallLast)
-        addIntraEdge(condCallLast, condNode);
+        addIntraEdge(condCallLast, condNodes[0]);
+    for (size_t i = 1; i < condNodes.size(); i++)
+        addIntraEdge(condNodes[i-1], condNodes[i]);
     if (!firstNode)
-        firstNode = condNode;
+        firstNode = condNodes[0];
+    // lastCondNode is where then/else edges come from
+    IntraICFGNode* lastCondNode = condNodes.back();
 
     // Merge node (after if/else)
     IntraICFGNode* mergeNode = addIntraICFGNode(bb, false);
     const_cast<SVFBasicBlock*>(bb)->addICFGNode(mergeNode);
 
-    // Process then branch
+    // Process then branch (order preserved!)
     TSNode consequence = ts_node_child_by_field_name(ifStmt, "consequence", 11);
+    ICFGNode* thenFirst = nullptr;
     if (!ts_node_is_null(consequence))
     {
         auto thenResult = processStatement(consequence, file, func, bb);
+        thenFirst = thenResult.first;
         if (thenResult.first)
         {
-            addIntraEdge(condNode, thenResult.first);
+            addIntraEdge(lastCondNode, thenResult.first);
             if (thenResult.last) addIntraEdge(thenResult.last, mergeNode);
         }
         else
-        {
-            addIntraEdge(condNode, mergeNode);
-        }
+            addIntraEdge(lastCondNode, mergeNode);
     }
     else
-    {
-        addIntraEdge(condNode, mergeNode);
-    }
+        addIntraEdge(lastCondNode, mergeNode);
 
-    // Process else branch (unwrap else_clause to get its body)
+    // Process else branch (order preserved!)
     TSNode alternative = ts_node_child_by_field_name(ifStmt, "alternative", 11);
     if (!ts_node_is_null(alternative) &&
         strcmp(ts_node_type(alternative), "else_clause") == 0)
-    {
         alternative = ts_node_named_child(alternative, 0);
-    }
+    ICFGNode* elseFirst = nullptr;
     if (!ts_node_is_null(alternative))
     {
         auto elseResult = processStatement(alternative, file, func, bb);
+        elseFirst = elseResult.first;
         if (elseResult.first)
         {
-            addIntraEdge(condNode, elseResult.first);
+            // For single condition or last condNode: else edge from lastCondNode
+            addIntraEdge(lastCondNode, elseResult.first);
             if (elseResult.last) addIntraEdge(elseResult.last, mergeNode);
         }
         else
-        {
-            addIntraEdge(condNode, mergeNode);
-        }
+            addIntraEdge(lastCondNode, mergeNode);
     }
     else
+        addIntraEdge(lastCondNode, mergeNode);
+
+    // For && / ||: add short-circuit edges from non-last condNodes
+    ICFGNode* falseTarget = elseFirst ? elseFirst : mergeNode;
+    ICFGNode* trueTarget = thenFirst ? thenFirst : mergeNode;
+    for (size_t i = 0; i + 1 < condNodes.size(); i++)
     {
-        addIntraEdge(condNode, mergeNode);
+        if (isAnd)
+            // &&: if condNode[i] is false, short-circuit to else/merge
+            addIntraEdge(condNodes[i], falseTarget);
+        else if (isOr)
+            // ||: if condNode[i] is true, short-circuit to then
+            addIntraEdge(condNodes[i], trueTarget);
     }
 
     return {firstNode, mergeNode};

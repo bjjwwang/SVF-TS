@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <set>
 
@@ -1063,17 +1064,118 @@ void CTSSVFIRBuilder::processReturn(TSNode ret, CTSSourceFile* file)
 
 void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
 {
-    // Process condition and create condition variable for branch pruning
     TSNode cond = ts_node_child_by_field_name(ifStmt, "condition", 9);
-    NodeID condVal = blackHoleNode;
-    if (!ts_node_is_null(cond))
+    TSNode innerCond = cond;
+    if (!ts_node_is_null(cond) &&
+        strcmp(ts_node_type(cond), "parenthesized_expression") == 0)
+        innerCond = ts_node_named_child(cond, 0);
+
+    // Flatten && / || chain (mirrors ICFG builder)
+    std::vector<TSNode> condParts;
+    bool isLogicalChain = false;
+    std::string logicalOp;
+    if (!ts_node_is_null(innerCond) &&
+        strcmp(ts_node_type(innerCond), "binary_expression") == 0)
     {
-        // Strip parenthesized_expression wrapper (tree-sitter wraps if-conditions)
-        TSNode innerCond = cond;
-        if (strcmp(ts_node_type(cond), "parenthesized_expression") == 0)
-            innerCond = ts_node_named_child(cond, 0);
-        condVal = getExprValue(innerCond, file);
+        TSNode opNode = ts_node_child(innerCond, 1);
+        logicalOp = CTSParser::getNodeText(opNode, file->getSource());
+        if (logicalOp == "&&" || logicalOp == "||")
+        {
+            isLogicalChain = true;
+            std::function<void(TSNode)> flatten = [&](TSNode expr) {
+                if (strcmp(ts_node_type(expr), "binary_expression") == 0)
+                {
+                    TSNode op2 = ts_node_child(expr, 1);
+                    if (CTSParser::getNodeText(op2, file->getSource()) == logicalOp)
+                    {
+                        flatten(ts_node_child_by_field_name(expr, "left", 4));
+                        flatten(ts_node_child_by_field_name(expr, "right", 5));
+                        return;
+                    }
+                }
+                condParts.push_back(expr);
+            };
+            flatten(innerCond);
+        }
     }
+
+    if (isLogicalChain)
+    {
+        // Evaluate each sub-condition on its own condNode and set branch conditions.
+        // ICFG builder created one condNode per condPart, recorded by sub-expression.
+        for (size_t i = 0; i < condParts.size(); i++)
+        {
+            ICFGNode* partNode = getICFGNode(condParts[i], file);
+            if (partNode) currentICFGNode = partNode;
+            NodeID partCondVal = getExprValue(condParts[i], file);
+
+            if (partNode && partCondVal != blackHoleNode)
+            {
+                const SVFVar* partCondVar = pag->getGNode(partCondVal);
+                std::set<const ICFGNode*> dstNodes;
+                for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
+                    if (SVFUtil::isa<IntraCFGEdge>(*it))
+                        dstNodes.insert((*it)->getDstNode());
+
+                if (dstNodes.size() >= 2)
+                {
+                    // Find the "true" target: next condNode for &&, then-body for ||
+                    ICFGNode* trueTarget = nullptr;
+                    if (logicalOp == "&&")
+                    {
+                        // For &&: true goes to next condNode (or then-body for last)
+                        if (i + 1 < condParts.size())
+                            trueTarget = getICFGNode(condParts[i + 1], file);
+                        // For last condNode, true goes to then-body (non-else successor)
+                    }
+                    // else for ||: true goes to then-body (always)
+
+                    for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
+                    {
+                        if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                        {
+                            s32_t cv;
+                            if (trueTarget)
+                                cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
+                            else
+                            {
+                                // Last condNode for &&, or any for ||:
+                                // Heuristic: the successor with lower ID that isn't else/merge
+                                // is the "true" branch. Use same logic as single-condition.
+                                // For now, identify by looking at which dest is also a condNode
+                                // vs which is then-body/merge.
+                                // Simplest: for last &&, pick the then-body (first successor)
+                                cv = (it == partNode->OutEdgeBegin()) ? 1 : 0;
+                            }
+                            icfgBuilder->setEdgeCondition(edge, partCondVar, cv);
+                        }
+                    }
+
+                    BranchStmt::SuccAndCondPairVec succs;
+                    for (auto it = partNode->OutEdgeBegin(); it != partNode->OutEdgeEnd(); ++it)
+                    {
+                        if (IntraCFGEdge* edge = SVFUtil::dyn_cast<IntraCFGEdge>(*it))
+                        {
+                            s32_t cv;
+                            if (trueTarget)
+                                cv = (edge->getDstNode() == trueTarget) ? 1 : 0;
+                            else
+                                cv = (it == partNode->OutEdgeBegin()) ? 1 : 0;
+                            succs.push_back(std::make_pair(edge->getDstNode(), cv));
+                        }
+                    }
+                    if (!succs.empty())
+                        addBranchEdge(partCondVal, partCondVal, succs);
+                }
+            }
+        }
+    }
+    else
+    {
+        // Single condition (original path)
+        NodeID condVal = blackHoleNode;
+        if (!ts_node_is_null(innerCond))
+            condVal = getExprValue(innerCond, file);
 
     // Set branch conditions on ICFG edges from the condition node
     ICFGNode* condICFGNode = getICFGNode(ifStmt, file);
@@ -1141,6 +1243,7 @@ void CTSSVFIRBuilder::processIfStatement(TSNode ifStmt, CTSSourceFile* file)
             // If thenICFGNode is still null, don't set conditions — leave edges unconditional
         }
     }
+    } // end else (single condition)
 
     // Process then branch
     TSNode consequence2 = ts_node_child_by_field_name(ifStmt, "consequence", 11);
