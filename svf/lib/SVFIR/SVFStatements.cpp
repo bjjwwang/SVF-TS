@@ -34,6 +34,32 @@
 using namespace SVF;
 using namespace SVFUtil;
 
+/// Helper: concise label for an SVFVar, e.g. "Var14(a)", "Var16(const=5)", "Var19"
+static std::string varLabel(const SVFVar* var)
+{
+    std::string s = "Var" + std::to_string(var->getId());
+    // Show constant value for ConstIntValVar / ConstFPValVar / ConstNullPtrValVar
+    if (const auto* ci = SVFUtil::dyn_cast<ConstIntValVar>(var))
+    {
+        s += "(const=" + std::to_string(ci->getSExtValue()) + ")";
+        return s;
+    }
+    if (const auto* cf = SVFUtil::dyn_cast<ConstFPValVar>(var))
+    {
+        s += "(const=" + std::to_string(cf->getFPValue()) + ")";
+        return s;
+    }
+    if (SVFUtil::isa<ConstNullPtrValVar>(var))
+    {
+        s += "(null)";
+        return s;
+    }
+    // For normal vars, show source name if meaningful
+    const std::string& name = var->getName();
+    if (!name.empty() && name.find("node_") != 0 && name != "Blackhole" && name != "ConstantObj")
+        s += "(" + name + ")";
+    return s;
+}
 
 u64_t SVFStmt::callEdgeLabelCounter = 0;
 u64_t SVFStmt::storeEdgeLabelCounter = 0;
@@ -85,7 +111,7 @@ const std::string AddrStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "AddrStmt: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "AddrStmt: [" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -98,7 +124,7 @@ const std::string CopyStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "CopyStmt: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "CopyStmt: [" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -111,9 +137,9 @@ const std::string PhiStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "PhiStmt: [Var" << getResID() << " <-- (";
+    rawstr << "PhiStmt: [" << varLabel(getRes()) << " <-- (";
     for(u32_t i = 0; i < getOpVarNum(); i++)
-        rawstr << "[Var" << getOpVar(i)->getId() << ", ICFGNode" << getOpICFGNode(i)->getId() <<  "],";
+        rawstr << "[" << varLabel(getOpVar(i)) << ", ICFGNode" << getOpICFGNode(i)->getId() <<  "],";
     rawstr << ")]\t";
     if (Options::ShowSVFIRValue())
     {
@@ -127,9 +153,9 @@ const std::string SelectStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "SelectStmt: (Condition Var" <<  getCondition()->getId() << ") [Var" << getResID() << " <-- (Var";
+    rawstr << "SelectStmt: (Cond " <<  varLabel(getCondition()) << ") [" << varLabel(getRes()) << " <-- (";
     for(const SVFVar* op : getOpndVars())
-        rawstr << op->getId() << ",";
+        rawstr << varLabel(op) << ",";
     rawstr << ")]\t";
     if (Options::ShowSVFIRValue())
     {
@@ -143,7 +169,7 @@ const std::string CmpStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "CmpStmt: [Var" << getResID() << " <-- (Var" << getOpVarID(0) << " predicate" << getPredicate() << " Var" << getOpVarID(1) << ")]\t";
+    rawstr << "CmpStmt: [" << varLabel(getRes()) << " <-- (" << varLabel(getOpVar(0)) << " pred" << getPredicate() << " " << varLabel(getOpVar(1)) << ")]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -156,7 +182,7 @@ const std::string BinaryOPStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "BinaryOPStmt: [Var" << getResID() << " <-- (Var" << getOpVarID(0) << " opcode" << getOpcode() << " Var" << getOpVarID(1) << ")]\t";
+    rawstr << "BinaryOPStmt: [" << varLabel(getRes()) << " <-- (" << varLabel(getOpVar(0)) << " op" << getOpcode() << " " << varLabel(getOpVar(1)) << ")]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -169,7 +195,7 @@ const std::string UnaryOPStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "UnaryOPStmt: [Var" << getResID() << " <-- " << " opcode" << getOpcode() << " Var" << getOpVarID() << "]\t";
+    rawstr << "UnaryOPStmt: [" << varLabel(getRes()) << " <-- op" << getOpcode() << " " << varLabel(getOpVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -183,12 +209,12 @@ const std::string BranchStmt::toString() const
     std::string str;
     std::stringstream rawstr(str);
     if(isConditional())
-        rawstr << "BranchStmt: [Condition Var" <<  getCondition()->getId() << "]\n";
+        rawstr << "BranchStmt: [Cond " <<  varLabel(getCondition()) << "]\n";
     else
-        rawstr << "BranchStmt: [" <<  " Unconditional branch" << "]\n";
+        rawstr << "BranchStmt: [Unconditional]\n";
 
     for(u32_t i = 0; i < getNumSuccessors(); i++)
-        rawstr << "Successor " << i << " ICFGNode" << getSuccessor(i)->getId() << "   ";
+        rawstr << "Succ " << i << " ICFGNode" << getSuccessor(i)->getId() << "   ";
 
     if (Options::ShowSVFIRValue())
     {
@@ -203,7 +229,7 @@ const std::string LoadStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "LoadStmt: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "LoadStmt: [" << varLabel(getLHSVar()) << " <-- *" << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -216,7 +242,7 @@ const std::string StoreStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "StoreStmt: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "StoreStmt: [*" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -229,7 +255,19 @@ const std::string GepStmt::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "GepStmt: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "GepStmt: [" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]";
+    if (isVariantFieldGep())
+    {
+        rawstr << " (variant)";
+    }
+    else if (isConstantOffset())
+    {
+        rawstr << " (offset=" << accumulateConstantOffset() << ")";
+    }
+    // show the pointee type from AccessPath (e.g. struct type, array element type)
+    if (const SVFType* srcTy = getAccessPath().gepSrcPointeeType())
+        rawstr << " srcType:" << srcTy->toString();
+    rawstr << "\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -242,7 +280,7 @@ const std::string CallPE::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "CallPE: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "CallPE: [" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";
@@ -255,7 +293,7 @@ const std::string RetPE::toString() const
 {
     std::string str;
     std::stringstream rawstr(str);
-    rawstr << "RetPE: [Var" << getLHSVarID() << " <-- Var" << getRHSVarID() << "]\t";
+    rawstr << "RetPE: [" << varLabel(getLHSVar()) << " <-- " << varLabel(getRHSVar()) << "]\t";
     if (Options::ShowSVFIRValue())
     {
         rawstr << "\n";

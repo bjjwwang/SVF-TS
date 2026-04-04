@@ -10,6 +10,7 @@
 #include "Util/CallGraphBuilder.h"
 #include "Util/NodeIDAllocator.h"
 #include "Util/SVFLoopAndDomInfo.h"
+#include "Util/ExtAPI.h"
 
 #include <algorithm>
 #include <cstring>
@@ -495,6 +496,26 @@ void CTSSVFIRBuilder::createFunctionObjects()
 
         func->setFunObjVar(funObj);
 
+        // Register ExtAPI annotations for known external functions
+        // (In LLVM frontend this comes from extapi.bc metadata; CTS must do it by name)
+        if (!func->hasBody())
+        {
+            const std::string& fname = func->getName();
+            static const std::set<std::string> heapAllocators = {
+                "malloc", "calloc", "realloc", "strdup", "strndup",
+                "alloca", "valloc", "pvalloc", "memalign", "aligned_alloc",
+                "safe_malloc", "safe_calloc", "safe_realloc",
+                "xmalloc", "xcalloc", "xrealloc",
+                "mmap", "mmap64", "fopen", "fopen64", "fdopen",
+                "getcwd", "tmpnam", "tempnam", "opendir", "sbrk"
+            };
+            if (heapAllocators.count(fname))
+            {
+                ExtAPI::getExtAPI()->setExtFuncAnnotations(
+                    funObj, {"ALLOC_HEAP_RET"});
+            }
+        }
+
         // Create ArgValVar for ALL functions (needed for CallPE edges)
         const auto& params = func->getParams();
         for (u32_t i = 0; i < params.size(); i++)
@@ -564,6 +585,8 @@ void CTSSVFIRBuilder::processGlobalVars()
     }
 
     // Pass 2: Process initializers (all globals now have valIds)
+    // Set currentICFGNode to GlobalICFGNode for global init statements
+    currentICFGNode = pag->getICFG()->getGlobalICFGNode();
     for (auto& entry : globalEntries)
     {
         CTSGlobalVar* gvar = entry.first;
@@ -571,13 +594,31 @@ void CTSSVFIRBuilder::processGlobalVars()
         TSNode init = gvar->getInitializer();
         if (!ts_node_is_null(init))
         {
-            NodeID initVal = getExprValue(init, gvar->getSourceFile());
-            if (initVal != blackHoleNode)
+            // Array initializer list: {val0, val1, ...} → GEP+Store for each element
+            if (strcmp(ts_node_type(init), "initializer_list") == 0)
             {
-                addStoreEdge(initVal, valId, nullptr);
+                uint32_t count = ts_node_named_child_count(init);
+                const SVFType* baseType = resolveType(gvar->getTypeNode(), gvar->getSourceFile());
+                for (uint32_t idx = 0; idx < count; idx++)
+                {
+                    NodeID elemVal = getExprValue(ts_node_named_child(init, idx), gvar->getSourceFile());
+                    NodeID gepNode = createValNode(moduleSet->getPtrType(), currentICFGNode);
+                    AccessPath ap((APOffset)idx, baseType);
+                    addGepEdge(valId, gepNode, ap, /*constGep=*/true);
+                    addStoreEdge(elemVal, gepNode, currentICFGNode);
+                }
+            }
+            else
+            {
+                NodeID initVal = getExprValue(init, gvar->getSourceFile());
+                if (initVal != blackHoleNode)
+                {
+                    addStoreEdge(initVal, valId, currentICFGNode);
+                }
             }
         }
     }
+    currentICFGNode = nullptr;
 }
 
 void CTSSVFIRBuilder::processFunction(CTSFunction* func)
@@ -752,10 +793,28 @@ void CTSSVFIRBuilder::processDeclaration(TSNode decl, CTSSourceFile* file)
             TSNode init = CTSParser::getInitializer(declarator);
             if (!ts_node_is_null(init))
             {
-                NodeID initVal = getExprValue(init, file);
-                if (initVal != blackHoleNode)
+                // Array initializer list: {val0, val1, ...} → GEP+Store for each element
+                if (strcmp(ts_node_type(init), "initializer_list") == 0 &&
+                    type && SVFUtil::isa<SVFArrayType>(type))
                 {
-                    addStoreEdge(initVal, valId, currentICFGNode);
+                    uint32_t count = ts_node_named_child_count(init);
+                    for (uint32_t idx = 0; idx < count; idx++)
+                    {
+                        NodeID elemVal = getExprValue(ts_node_named_child(init, idx), file);
+                        NodeID gepNode = createValNode(moduleSet->getPtrType(), currentICFGNode);
+                        const SVFType* elemType = SVFUtil::cast<SVFArrayType>(type)->getTypeOfElement();
+                        AccessPath ap((APOffset)idx, elemType);
+                        addGepEdge(valId, gepNode, ap, /*constGep=*/true);
+                        addStoreEdge(elemVal, gepNode, currentICFGNode);
+                    }
+                }
+                else
+                {
+                    NodeID initVal = getExprValue(init, file);
+                    if (initVal != blackHoleNode)
+                    {
+                        addStoreEdge(initVal, valId, currentICFGNode);
+                    }
                 }
             }
         }
@@ -922,16 +981,22 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         funcName = CTSParser::getNodeText(funcNode, file->getSource());
     }
 
-    // Handle malloc/calloc as heap allocation
-    if (funcName == "malloc" || funcName == "calloc")
+    // Handle malloc/calloc/alloca/realloc as heap/stack allocation
+    // Note: tree-sitter doesn't expand macros, so we also match common
+    // macro names like ALLOCA, MALLOC, etc.
     {
-        return createHeapObj(call, file, currentICFGNode);
-    }
-
-    // Handle realloc as heap allocation
-    if (funcName == "realloc")
-    {
-        return createHeapObj(call, file, currentICFGNode);
+        static const std::set<std::string> allocNames = {
+            "malloc", "calloc", "alloca", "realloc",
+            "valloc", "memalign", "aligned_alloc",
+            "strdup", "strndup", "mmap",
+            "ALLOCA", "MALLOC", "CALLOC", "REALLOC",
+            "xmalloc", "xcalloc", "xrealloc",
+            "safe_malloc", "safe_calloc", "safe_realloc",
+        };
+        if (allocNames.count(funcName))
+        {
+            return createHeapObj(call, file, currentICFGNode);
+        }
     }
 
     // Handle free as no-op (returns void)
@@ -1032,10 +1097,22 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
                 // External function: NO RetPE (callee has no body to return from).
                 // AE's handleExtAPI sets the return value directly on actualRet.
                 RetICFGNode* retICFGNode = const_cast<RetICFGNode*>(callICFGNode->getRetICFGNode());
-                // Create result on retNode so handleExtAPI sets the value before
-                // any subsequent StoreStmt uses it
-                NodeID resultNode = createValNode(moduleSet->getPtrType(),
-                    retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : callICFGNode);
+                ICFGNode* resultICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : callICFGNode;
+
+                // For allocators (malloc, calloc, alloca, etc.), create a heap
+                // ObjVar and AddrStmt so that the return value has a proper
+                // address in the abstract domain, matching LLVM frontend behavior.
+                if (SVFUtil::isHeapAllocExtFunViaRet(calleeFunObj))
+                {
+                    NodeID heapVal = createHeapObj(call, file, resultICFGNode);
+                    if (retICFGNode)
+                        pag->addCallSiteRets(retICFGNode, pag->getGNode(heapVal));
+                    currentICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : savedICFGNode;
+                    return heapVal;
+                }
+
+                // Non-allocator external: create plain result node
+                NodeID resultNode = createValNode(moduleSet->getPtrType(), resultICFGNode);
                 if (retICFGNode)
                     pag->addCallSiteRets(retICFGNode, pag->getGNode(resultNode));
 
@@ -2297,19 +2374,44 @@ NodeID CTSSVFIRBuilder::getFieldGepNode(TSNode fieldExpr, CTSSourceFile* file)
     TSNode fieldNode = ts_node_child_by_field_name(fieldExpr, "field", 5);
     std::string fieldName = CTSParser::getNodeText(fieldNode, file->getSource());
 
-    // Get base address (lvalue of the struct variable)
-    NodeID baseAddr = getExprLValue(base, file);
+    // Detect "." vs "->" operator:
+    //   s.field  → GEP on lvalue of s (struct address)
+    //   p->field → GEP on rvalue of p (load the pointer first)
+    bool isArrow = false;
+    for (u32_t i = 0; i < ts_node_child_count(fieldExpr); i++)
+    {
+        TSNode child = ts_node_child(fieldExpr, i);
+        if (strcmp(ts_node_type(child), "->") == 0)
+        {
+            isArrow = true;
+            break;
+        }
+    }
+
+    NodeID gepBase;
+    if (isArrow)
+        gepBase = getExprValue(base, file);  // load pointer first
+    else
+        gepBase = getExprLValue(base, file);  // struct address
 
     // Resolve struct type from base variable
     std::string structName;
     const SVFType* structType = nullptr;
-    if (strcmp(ts_node_type(base), "identifier") == 0)
+    // Walk through the base to find the root identifier and its type
+    TSNode cur = base;
+    // For chains like p->a.b, skip field_expression layers
+    while (strcmp(ts_node_type(cur), "field_expression") == 0)
+        cur = ts_node_child_by_field_name(cur, "argument", 8);
+    if (strcmp(ts_node_type(cur), "identifier") == 0)
     {
-        std::string varName = CTSParser::getNodeText(base, file->getSource());
+        std::string varName = CTSParser::getNodeText(cur, file->getSource());
         auto* varInfo = scopeManager->lookupVar(varName);
         if (varInfo && varInfo->type)
         {
-            if (auto* st = SVFUtil::dyn_cast<SVFStructType>(varInfo->type))
+            const SVFType* baseTy = varInfo->type;
+            // For pointer types (p->field), the struct type is what the pointer points to
+            // We don't have explicit pointee info, so look up struct by name
+            if (auto* st = SVFUtil::dyn_cast<SVFStructType>(baseTy))
             {
                 structName = const_cast<SVFStructType*>(st)->getName();
                 structType = st;
@@ -2327,10 +2429,10 @@ NodeID CTSSVFIRBuilder::getFieldGepNode(TSNode fieldExpr, CTSSourceFile* file)
         if (!structType) structType = structDef->getSVFType();
     }
 
-    // Create GEP: result = GEP(baseAddr, fieldIdx)
+    // Create GEP: result = GEP(gepBase, fieldIdx)
     NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
     AccessPath ap(fieldIdx, structType);
-    addGepEdge(baseAddr, result, ap);
+    addGepEdge(gepBase, result, ap);
     return result;
 }
 
@@ -2339,17 +2441,12 @@ NodeID CTSSVFIRBuilder::getArrayGepNode(TSNode subscriptExpr, CTSSourceFile* fil
     TSNode array = ts_node_child_by_field_name(subscriptExpr, "argument", 8);
     TSNode index = ts_node_child_by_field_name(subscriptExpr, "index", 5);
 
-    // Get base array address
-    NodeID baseAddr = getExprLValue(array, file);
-
     // Evaluate index expression
     NodeID indexVal = getExprValue(index, file);
 
-    // Determine array type and whether index is constant
-    const SVFType* arrayType = nullptr;
+    // Determine index constant value
     bool constGep = false;
     APOffset constIdx = 0;
-
     if (strcmp(ts_node_type(index), "number_literal") == 0)
     {
         std::string idxText = CTSParser::getNodeText(index, file->getSource());
@@ -2357,22 +2454,88 @@ NodeID CTSSVFIRBuilder::getArrayGepNode(TSNode subscriptExpr, CTSSourceFile* fil
         catch (...) {}
     }
 
-    if (strcmp(ts_node_type(array), "identifier") == 0)
+    // Resolve element type and decide whether to load the base pointer.
+    //
+    // Only the FIRST subscript on a pointer-typed variable needs a load:
+    //   int arr[2]:    arr[i]   → GEP on lvalue (array addr IS the ptr)
+    //   int* ptr:      ptr[i]   → load ptr value first, then GEP
+    //   int a[3][3]:   a[i][j]  → outer GEP on lvalue, inner GEP on outer result (no load)
+    //
+    // When 'array' is itself a subscript_expression, the recursive getExprLValue
+    // already returns a GEP result pointer — no extra load needed.
+    const SVFType* elementType = nullptr;
+    bool needLoad = false;
     {
-        std::string varName = CTSParser::getNodeText(array, file->getSource());
-        auto* varInfo = scopeManager->lookupVar(varName);
-        if (varInfo && varInfo->type)
-            arrayType = varInfo->type;
+        // Only check if the immediate base is an identifier (first subscript level)
+        if (strcmp(ts_node_type(array), "identifier") == 0)
+        {
+            std::string varName = CTSParser::getNodeText(array, file->getSource());
+            auto* varInfo = scopeManager->lookupVar(varName);
+            if (varInfo && varInfo->type)
+            {
+                if (auto* arrTy = SVFUtil::dyn_cast<SVFArrayType>(varInfo->type))
+                {
+                    // Local array: GEP directly on lvalue, element type from array
+                    elementType = arrTy->getTypeOfElement();
+                }
+                else
+                {
+                    // Pointer variable or base type (e.g. int for "int* arr" param)
+                    // Need to load the pointer value first, then GEP
+                    elementType = varInfo->type;
+                    needLoad = true;
+                }
+            }
+        }
+        else
+        {
+            // Nested subscript or other expression — the base is already a pointer
+            // from a previous GEP. Resolve element type by walking to root.
+            TSNode cur = array;
+            int depth = 0;
+            while (strcmp(ts_node_type(cur), "subscript_expression") == 0)
+            {
+                cur = ts_node_child_by_field_name(cur, "argument", 8);
+                depth++;
+            }
+            if (strcmp(ts_node_type(cur), "identifier") == 0)
+            {
+                std::string varName = CTSParser::getNodeText(cur, file->getSource());
+                auto* varInfo = scopeManager->lookupVar(varName);
+                if (varInfo && varInfo->type)
+                {
+                    const SVFType* ty = varInfo->type;
+                    for (int i = 0; i < depth; i++)
+                    {
+                        if (auto* arrTy = SVFUtil::dyn_cast<SVFArrayType>(ty))
+                            ty = arrTy->getTypeOfElement();
+                        else
+                            break;
+                    }
+                    elementType = ty;
+                }
+            }
+        }
     }
+
+    // Get GEP base
+    NodeID gepBase;
+    if (needLoad)
+        gepBase = getExprValue(array, file);  // load pointer, then GEP
+    else
+        gepBase = getExprLValue(array, file);  // array or nested: GEP on lvalue
 
     // Create GEP node
     NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
-    AccessPath ap(constIdx, arrayType);
+    AccessPath ap(constIdx, elementType);
     if (!constGep)
     {
-        ap.addOffsetVarAndGepTypePair(pag->getGNode(indexVal), arrayType);
+        // For variant GEP, pass pointer type as the idx-type pair (matching LLVM:
+        // getelementptr i32, ptr %base, i64 %idx → gepTy is ptr for the index).
+        // This ensures getElementIndex uses elemNum*idx instead of flattenedElemIdx.
+        ap.addOffsetVarAndGepTypePair(pag->getGNode(indexVal), moduleSet->getPtrType());
     }
-    addGepEdge(baseAddr, result, ap, constGep);
+    addGepEdge(gepBase, result, ap, constGep);
     return result;
 }
 
