@@ -21,11 +21,12 @@ LLVM frontend does both in one pass because each LLVM instruction maps 1:1 to an
 | File | Role |
 |------|------|
 | `svf-cts/lib/CTSICFGBuilder.cpp` | Builds ICFG from AST. Creates IntraICFGNode, CallICFGNode, RetICFGNode, FunEntry/Exit. |
-| `svf-cts/lib/CTSSVFIRBuilder.cpp` | Builds SVFIR statements. The main workhorse (~1900 lines). |
+| `svf-cts/lib/CTSSVFIRBuilder.cpp` | Builds SVFIR statements. The main workhorse (~2100 lines). |
 | `svf-cts/lib/CTSModule.cpp` | Parses files, collects functions/globals/structs, manages types. |
 | `svf-cts/lib/CTSParser.cpp` | Tree-Sitter wrapper. Node type checking, text extraction. |
 | `svf-cts/lib/ScopeManager.cpp` | Variable scope stack (alloca model, not SSA). |
 | `svf-cts/tools/cts-ae/cts-ae.cpp` | AE analysis entry point. |
+| `svf-cts/tools/cts-svf/cts-svf.cpp` | SVF analysis tool with --dump-icfg/--dump-pag. |
 
 ## Critical Differences from LLVM Frontend
 
@@ -38,6 +39,10 @@ CTS: `currentICFGNode` is a mutable field that tracks which ICFG node SVFIR stat
 - **For-loop conditions**: `processForStatement` starts with `currentICFGNode = initNode`. The condition must be evaluated with `currentICFGNode = condNode` (found as initNode's successor). The update expression needs `currentICFGNode = updateNode` (condNode's non-init predecessor).
   
 - **Function call return values**: After creating RetPE for internal calls, switch `currentICFGNode = retICFGNode` so that subsequent StoreStmt (e.g., `int x = foo()`) attaches to retNode, not callNode. AE processes SVFStmts BEFORE handleCallSite, so if the store is on callNode, it executes before the return value is available.
+
+- **Function parameter processing**: Set `currentICFGNode = FunEntryICFGNode` before the parameter loop, so AddrStmt/StoreStmt for parameters register on the entry node.
+
+- **Global variable init**: Set `currentICFGNode = GlobalICFGNode` before processing global initializers, so GepStmt/StoreStmt register on the global node.
 
 ### 2. External vs Internal Function Calls — Completely Different ICFG
 
@@ -87,6 +92,59 @@ Pitfalls:
 
 Current approximation: return rhs for `&&`, lhs for `||`. This gives single-constraint narrowing. Full fix: generate nested if branches in ICFG (matching Clang's short-circuit lowering).
 
+### 8. Allocator Calls (malloc/calloc/alloca) Must Create HeapObjVar
+
+LLVM: `alloca` is a dedicated instruction (`visitAllocaInst`), `malloc` is identified via ExtAPI annotation `ALLOC_HEAP_RET`. Both create ObjVar + AddrStmt so the return pointer has a concrete address in the abstract domain.
+
+CTS: Tree-Sitter sees `malloc(...)` and `alloca(...)` as plain function calls. Without special handling, the return value is an empty ValVar with no address — subsequent GEP/Store through the pointer have no base object to operate on.
+
+**Fix**: In `processCallExpr`, detect allocator names (`malloc`, `calloc`, `alloca`, `ALLOCA`, `realloc`, `strdup`, etc.) and call `createHeapObj()` which creates HeapObjVar + AddrStmt. Note: Tree-Sitter doesn't expand macros, so also match macro names like `ALLOCA`, `MALLOC`.
+
+### 9. Pointer Subscript vs Array Subscript — Must Distinguish
+
+For `base[idx]`, the GEP base depends on `base`'s type:
+
+| Declaration | VarInfo::type | GEP base | Why |
+|-------------|---------------|----------|-----|
+| `int arr[3]` | SVFArrayType | `getExprLValue(arr)` | Array address IS the pointer to first element |
+| `int* ptr` (param) | int (base type) | `getExprValue(ptr)` (Load first) | `&ptr` ≠ `ptr`; must load pointer value |
+| `a[i][j]` inner | — | `getExprLValue(a[i])` (prior GEP result) | No extra load; previous GEP already gives pointer |
+
+**Key rule**: Only the first subscript on a non-array identifier needs a Load. Nested subscripts and array-typed variables don't.
+
+For struct field access, same principle: `s.field` → GEP on lvalue; `p->field` → Load pointer first, then GEP. Detect via tree-sitter `->` operator child node.
+
+### 10. Variant GEP Type Pair Must Be Pointer Type
+
+In `getElementIndex()` (AE), the type in `IdxOperandPair` determines the offset calculation:
+- **SVFPointerType** → `elemNum * idx` (correct for array element access)
+- **Other types** → `getFlattenedElemIdx(type, idx)` (for struct field flattening)
+
+LLVM always passes pointer type for array element GEPs. CTS must do the same: `ap.addOffsetVarAndGepTypePair(indexVar, moduleSet->getPtrType())` for variant (non-constant) array subscripts.
+
+Passing the element type (e.g., `i32`) causes `getFlattenedElemIdxVec()` to return `{0}`, forcing all variable indices to 0.
+
+### 11. ExtAPI Annotations Must Be Registered for CTS Functions
+
+LLVM frontend loads `extapi.bc` and extracts function annotations (e.g., `ALLOC_HEAP_RET`, `MEMCPY`) from LLVM metadata. CTS doesn't load extapi.bc.
+
+**Fix**: In `createFunctionObjects()`, after creating FunObjVar for each external function, call `ExtAPI::getExtAPI()->setExtFuncAnnotations(funObj, {...})` with the appropriate annotations. (`CTSSVFIRBuilder` is added as `friend` of `ExtAPI`.)
+
+Currently registers: heap allocators (malloc, calloc, alloca, etc.). TODO: register MEMCPY, MEMSET, STRCPY annotations for string operation modeling.
+
+### 12. Array Initializer Lists Must Generate Per-Element GEP+Store
+
+`int a[3] = {1, 2, 3}` — the initializer_list must generate:
+```
+GepStmt(a, offset=0) → StoreStmt(1)
+GepStmt(a, offset=1) → StoreStmt(2)
+GepStmt(a, offset=2) → StoreStmt(3)
+```
+
+Previously: `getExprValue(initializer_list)` only returned the first element. Fixed in both `processDeclaration` (local arrays) and `processGlobalVars` (global arrays).
+
+For globals: `currentICFGNode` must be set to `GlobalICFGNode` before processing initializers.
+
 ## AE Execution Flow for Function Calls
 
 For `foo(&a)` where foo does `*p = 1`:
@@ -113,6 +171,24 @@ main's WTO:
 
 **Current status**: PTA correctly resolves p→a_obj (CopyProcessed=3, StoreProcessed=1). But AE's abstract state still doesn't carry a_obj=1 through the call chain. Suspected issue: the store `*p = 1` inside foo requires the address domain to propagate through CallPE → Store(arg to local) → Load(local) → Store(*p). If any step drops the address information, the chain breaks.
 
+## Remaining Failures (65/108 pass, 43 fail)
+
+| Root Cause | Count | Cases |
+|------------|-------|-------|
+| string ops not modeled (strcpy/memcpy/sprintf) | 11 | BASIC_ptr_s32_2, BUF_OVERFLOW_47, CVE-2020-13598, CVE-2020-29203, CVE-2021-39602, CVE-2021-45341, CVE-2022-23850, CVE-2022-27239, CVE-2022-34913, cwe126_char, CWE127_har, INTERVAL_test_36-1 |
+| foo(&a) pointer param write-back | 9 | CVE-2019-19847, CVE-2021-44975, CVE-2022-26129, CVE-2022-29023, CVE-2022-34835, CVE-2022-34918, INTERVAL_test_13, INTERVAL_test_19, INTERVAL_test_49 |
+| cross-function array/pointer GEP | 6 | BASIC_array_func_0/3/4/6, BASIC_array_int, BASIC_struct_array |
+| function pointer indirect call | 3 | BASIC_ptr_func_1/4/6 |
+| scanf/rand not modeled | 3 | INTERVAL_test_2, INTERVAL_test_20, INTERVAL_test_9 |
+| nested if narrowing | 2 | BASIC_br_nd_malloc, BASIC_nullptr_def |
+| && condition narrowing | 1 | INTERVAL_test_14 |
+| uninitialized variable / goto loop | 2 | INTERVAL_test_58, INTERVAL_test_64 |
+| switch statement | 1 | BASIC_switch (missing extern decl for svf_assert) |
+| cast/trunc | 1 | CAST_trunc |
+| global array init (AE doesn't process GlobalICFGNode GEP) | 1 | BASIC_arraycopy3 |
+| missing extern declaration | 1 | BASIC_arraycopy1 |
+| foo(&a) + switch | 1 | INTERVAL_test_12 |
+
 ## How to Run Tests
 
 ```bash
@@ -122,31 +198,29 @@ main's WTO:
 # All tests with pass rate
 pass=0; total=0; for f in TS-TestSuite/src/ae_assert_tests/*.c; do
   total=$((total+1))
-  timeout 30 ./Release-build/bin/cts-ae "$f" 2>&1; [ $? -eq 0 ] && pass=$((pass+1))
+  result=$(timeout 30 ./Release-build/bin/cts-ae "$f" 2>&1)
+  echo "$result" | grep -q "successfully verified" && pass=$((pass+1))
 done; echo "PASS:$pass / $total"
 
-# Categorize failures
-# NC = "not been checked" (svf_assert unreachable)
-# VF = "cannot be verified" (svf_assert reached but wrong value)  
-# CR = crash (assertion failure in SVF internals)
+# Dump ICFG for debugging
+./Release-build/bin/cts-svf --dump-icfg test.c
 
 # Compare with LLVM pipeline
 export PATH=$PWD/llvm-18.1.0.obj/bin:$PATH
 clang -c -emit-llvm -g test.c -o test.bc
 ./Release-build/bin/ae test.bc
-
-# Dump constraint graph (for PTA debugging)
-./Release-build/bin/cts-ae -print-constraint-graph=true test.c
 ```
 
 ## How to Debug
 
-### Check if ICFG structure is correct
+### Check ICFG structure
 ```bash
 ./Release-build/bin/cts-svf --dump-icfg test.c
-# Look at the .dot file for edge connectivity
+# Statements now show rich info: variable names, constant values, GEP offsets
+# e.g. GepStmt: [Var19 <-- Var14(a)] (offset=0) srcType:[3xi32]
+#      StoreStmt: [*Var22 <-- Var16(const=0)]
+#      CmpStmt: [Var50 <-- (Var47 pred32 Var49(const=65))]
 ```
-Note: cts-svf --dump-icfg currently crashes after RetPE registration fix (DOT output issue). Use cts-ae instead.
 
 ### Check Andersen PTA stats
 ```bash
@@ -155,23 +229,16 @@ Note: cts-svf --dump-icfg currently crashes after RetPE registration fix (DOT ou
 - `CopyProcessed=0` with pointer args → CallPE not in constraint graph → check ArgValVar type
 - `StoreProcessed=0` with pointer stores → pointer target unknown → check PTA resolution
 
-### Check which SVFStmts are on each ICFGNode
-Add temporary debug in `handleSVFStatement` or use `--dump-stmts` in cts-svf.
-
-### Key comparison points with LLVM
-| Metric | LLVM typical | CTS if wrong |
-|--------|-------------|--------------|
-| CopyProcessed | >0 | 0 (CallPE type issue) |
-| StoreProcessed | >0 | 0 (PTA can't resolve pointer) |
-| CallsNum | matches # of internal calls | lower (external calls wrongly creating CallPE) |
+### Web ICFG viewer
+https://icfg.bjjwwangs.win — side-by-side CTS vs LLVM ICFG for all 108 test cases, with source code and independent pan/zoom.
 
 ## Common Gotchas
 
-1. **Tree-Sitter doesn't preprocess** — `#define`, `#include <system>`, `true`/`false` from stdbool.h are all raw text. Handle `true`/`false`/`NULL` as identifier special cases.
+1. **Tree-Sitter doesn't preprocess** — `#define`, `#include <system>`, `true`/`false` from stdbool.h are all raw text. Handle `true`/`false`/`NULL` as identifier special cases. Macro names like `ALLOCA` won't expand to `alloca` — match both.
 
 2. **Tree-Sitter's `parenthesized_expression`** — if-conditions are wrapped in `(...)`. Always strip: `if (strcmp(ts_node_type(cond), "parenthesized_expression") == 0) innerCond = ts_node_named_child(cond, 0);`
 
-3. **Type specifier vs declarator** — `int* p` has type specifier `int` and pointer_declarator `*p`. `resolveType(getTypeSpecifier(...))` returns `int`, not `int*`. Use `resolveFullType` or just `getPtrType()` when pointer type is needed.
+3. **Type specifier vs declarator** — `int* p` has type specifier `int` and pointer_declarator `*p`. `resolveType(getTypeSpecifier(...))` returns `int`, not `int*`. Parameter types stored in VarInfo are base types (e.g. `int` for `int* arr`), not pointer types.
 
 4. **`getExprValue` vs `getExprLValue`** — `getExprValue` loads the value (creates LoadStmt). `getExprLValue` returns the address (for store targets). For `x = expr`, LHS uses `getExprLValue`, RHS uses `getExprValue`.
 
@@ -180,3 +247,7 @@ Add temporary debug in `handleSVFStatement` or use `--dump-stmts` in cts-svf.
 6. **Multiple calls in one statement** — `f(g(x))` has two calls. ICFG builder finds ALL calls bottom-up and chains them: CallNode_g → RetNode_g → CallNode_f → RetNode_f.
 
 7. **`addStoreEdge` third parameter** — explicitly pass the ICFGNode for the store. Don't rely on `currentICFGNode` being correct after a function call.
+
+8. **CallPE/RetPE `setValue()`** — Must call `callPE->setValue(pag->getGNode(dst))` after creation. Without it, `getValue()` returns null causing segfault in DOT dump toString().
+
+9. **AccessPath srcType for GepStmt** — The `gepSrcPointeeType` in AccessPath is what shows as `srcType:` in the dump. For array subscript, pass the element type (e.g. `i32` for `int[]`). For struct field, pass the struct type. Pass null/omit for pointer-typed GEPs (the pointer type is inferred).
