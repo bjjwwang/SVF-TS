@@ -446,6 +446,11 @@ void CTSSVFIRBuilder::addBranchEdge(NodeID br, NodeID cond,
         edge->setValue(pag->getGNode(cond));
         edge->setBB(currentBB);
         edge->setICFGNode(currentICFGNode);
+        if (currentICFGNode)
+        {
+            pag->addToSVFStmtList(currentICFGNode, edge);
+            currentICFGNode->addSVFStmt(edge);
+        }
     }
 }
 
