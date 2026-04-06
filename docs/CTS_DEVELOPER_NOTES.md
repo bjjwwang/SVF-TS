@@ -251,3 +251,32 @@ https://icfg.bjjwwangs.win — side-by-side CTS vs LLVM ICFG for all 108 test ca
 8. **CallPE/RetPE `setValue()`** — Must call `callPE->setValue(pag->getGNode(dst))` after creation. Without it, `getValue()` returns null causing segfault in DOT dump toString().
 
 9. **AccessPath srcType for GepStmt** — The `gepSrcPointeeType` in AccessPath is what shows as `srcType:` in the dump. For array subscript, pass the element type (e.g. `i32` for `int[]`). For struct field, pass the struct type. Pass null/omit for pointer-typed GEPs (the pointer type is inferred).
+
+## Remaining Work Priority (as of 2026-04-06)
+
+### Current Pass Rates
+| Test Suite | CTS | LLVM |
+|-----------|-----|------|
+| ae_assert_tests | 72/108 (67%) | ~100% |
+| ae_overflow_tests | 32/63 (51%) | 54/63 (86%) |
+
+### Priority Table
+
+| Priority | Task | Impact | Difficulty | Details |
+|----------|------|--------|------------|---------|
+| P0 | For-loop in-loop narrowing | overflow +14 | Hard | BranchStmt now registered on ICFGNode. After-loop narrowing works. In-loop narrowing fails because AE's WTO cycle widen doesn't narrow back inside the body. Need to compare LLVM's WTO cycle structure vs CTS's — may need PhiStmt at loop header for the induction variable. |
+| P1 | Preprocessed header interference | overflow +several | Medium | Simplified test cases pass but full test cases with std_testcase.h fail. Likely typedef struct, global variable ObjTypeInfo, or function name collision. |
+| P2 | Pointer arithmetic `a + 9` | assert +1 | Low | `int *p = a + 9` → GepStmt(a, offset=9). CTS binary_expression for pointer+int not modeled as GEP. |
+| P3 | Cast trunc `(int8_t)256` | assert +1 | Low | Need truncation modeling in CopyStmt or UnaryOPStmt. |
+| P4 | && double narrowing | assert +1 | Medium | Needs nested condNode ICFG structure (partially implemented). |
+| P5 | Function pointer indirect call | assert +3 | High | Need Andersen PTA indirect call resolution → dynamic CallCFGEdge. |
+| P6 | wchar_t strlen/wcslen | overflow +6 | Medium | AE strlen handler doesn't handle wchar_t. Need wcslen → wchar_t byte-level copy. |
+
+### Key Discoveries This Session
+1. **BranchStmt must be on ICFGNode stmt list** — `addBranchEdge` was missing `addToSVFStmtList + addSVFStmt`. Without this, AE's `isBranchFeasible` never fires.
+2. **recordStmtNode overwrite bug** — expression_statement and its first call_expression child share the same start_byte. Outer call's args were registered on inner call's CallICFGNode.
+3. **Array name decay** — array identifier in getExprValue must return address directly (no Load) to match C array-to-pointer decay semantics.
+4. **sizeof hardcoded to 8** — was causing all buffer size calculations to be wrong.
+5. **alloca size not tracked** — ObjTypeInfo had no byte size for heap objects.
+6. **String literal init** — `char s[] = "ABC"` needs per-character GEP+Store.
+7. **Constant expression array size** — `char s[10+1]` fails stoul, needs tryEvalConstExpr.
