@@ -152,6 +152,15 @@ private:
     const SVFBasicBlock* currentBB;
     ICFGNode* currentICFGNode;
 
+    /// Get or create a FunObjVar for an undeclared external function (memcpy, etc.)
+    const FunObjVar* getOrCreateExtFunObjVar(const std::string& funcName);
+
+    /// Scan source for calls to known external functions and pre-register them
+    void registerKnownExternalCalls();
+
+    /// Cache of dynamically created external FunObjVars
+    std::map<std::string, const FunObjVar*> extFunCache;
+
     /// Special node IDs
     NodeID blackHoleNode;
     NodeID constPtrNode;

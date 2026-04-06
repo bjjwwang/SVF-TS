@@ -15,6 +15,8 @@
 #include <algorithm>
 #include <cstring>
 #include <functional>
+#include <set>
+#include <functional>
 #include <iostream>
 #include <set>
 
@@ -39,6 +41,12 @@ SVFIR* CTSSVFIRBuilder::build(const std::vector<std::string>& sourceFiles)
     // Step 1: Parse source files and collect symbols
     moduleSet = CTSModuleSet::getModuleSet();
     moduleSet->buildFromFiles(sourceFiles);
+
+    // Step 1a: Pre-register known external functions that appear in source code
+    // Tree-Sitter doesn't process #include, so functions like memcpy/strcpy
+    // may be called without a declaration. We scan all call_expressions and
+    // add matching external functions so ICFG builder can create CallICFGNodes.
+    registerKnownExternalCalls();
 
     // Step 1b: Build SVFStructTypes bottom-up with real field types
     // (must happen before PAG so resolveType works during createFunctionObjects)
@@ -1013,9 +1021,15 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         return createValNode(moduleSet->getPtrType(), currentICFGNode);
     }
 
-    // Look up callee
+    // Look up callee. If not found but the name matches a known external
+    // function (memcpy, strcpy, etc.), create a FunObjVar on the fly so
+    // that AE's handleExtAPI can recognize and model it.
     CTSFunction* calleeFunc = moduleSet->getFunction(funcName);
     const FunObjVar* calleeFunObj = calleeFunc ? calleeFunc->getFunObjVar() : nullptr;
+    if (!calleeFunObj && !funcName.empty())
+    {
+        calleeFunObj = getOrCreateExtFunObjVar(funcName);
+    }
 
     // Evaluate arguments
     std::vector<NodeID> argVals;
@@ -2366,6 +2380,183 @@ ICFGNode* CTSSVFIRBuilder::getICFGNode(TSNode stmt, CTSSourceFile* file)
 {
     if (!icfgBuilder) return nullptr;
     return icfgBuilder->getStmtICFGNode(stmt, file);
+}
+
+void CTSSVFIRBuilder::registerKnownExternalCalls()
+{
+    // Known external function names (C source level)
+    static const std::set<std::string> knownExtNames = {
+        "memcpy", "memmove", "memset", "memcmp",
+        "strcpy", "strncpy", "strcat", "strncat", "strcmp", "strncmp", "strlen",
+        "stpcpy", "wcscpy", "wcscat", "wcsncat",
+        "sprintf", "snprintf", "printf", "fprintf", "scanf", "fscanf", "sscanf",
+        "puts", "gets", "fgets", "fputs", "fread", "fwrite",
+        "malloc", "calloc", "realloc", "free", "alloca",
+        "valloc", "memalign", "aligned_alloc", "strdup", "strndup",
+        "mmap", "fopen", "fopen64", "fdopen",
+        "atoi", "atol", "atof", "strtol", "strtoul",
+        "abs", "exit", "abort", "rand", "srand", "time", "clock", "sleep",
+        "isdigit", "isalpha", "toupper", "tolower",
+        "svf_assert", "svf_print",
+    };
+
+    // Walk all source files' ASTs looking for call_expression with known names
+    std::function<void(TSNode, CTSSourceFile*)> scan = [&](TSNode node, CTSSourceFile* file) {
+        if (ts_node_is_null(node)) return;
+        if (strcmp(ts_node_type(node), "call_expression") == 0)
+        {
+            TSNode funcNode = ts_node_child_by_field_name(node, "function", 8);
+            if (!ts_node_is_null(funcNode) && strcmp(ts_node_type(funcNode), "identifier") == 0)
+            {
+                std::string name = CTSParser::getNodeText(funcNode, file->getSource());
+                if (knownExtNames.count(name) && !moduleSet->getFunction(name))
+                {
+                    moduleSet->addExternalFunction(name);
+                }
+            }
+        }
+        for (uint32_t i = 0; i < ts_node_child_count(node); i++)
+            scan(ts_node_child(node, i), file);
+    };
+
+    for (auto* file : moduleSet->getSourceFiles())
+    {
+        scan(file->getRootNode(), file);
+    }
+}
+
+const FunObjVar* CTSSVFIRBuilder::getOrCreateExtFunObjVar(const std::string& funcName)
+{
+    // Return cached version if already created
+    auto it = extFunCache.find(funcName);
+    if (it != extFunCache.end())
+        return it->second;
+
+    // Known external function annotations (C source-level names)
+    static const std::map<std::string, std::vector<std::string>> knownExtFuncs = {
+        // Memory copy
+        {"memcpy",       {"MEMCPY"}},
+        {"memmove",      {"MEMCPY"}},
+        {"strncpy",      {"MEMCPY"}},
+        {"memccpy",      {"MEMCPY"}},
+        {"bcopy",        {"MEMCPY"}},
+        // String copy
+        {"strcpy",       {"STRCPY"}},
+        {"stpcpy",       {"STRCPY"}},
+        {"wcscpy",       {"STRCPY"}},
+        // String concat
+        {"strcat",       {"STRCAT"}},
+        {"strncat",      {"STRCAT"}},
+        {"wcscat",       {"STRCAT"}},
+        {"wcsncat",      {"STRCAT"}},
+        // Memory set
+        {"memset",       {"MEMSET"}},
+        {"wmemset",      {"MEMSET"}},
+        // Heap alloc (via ret)
+        {"malloc",       {"ALLOC_HEAP_RET"}},
+        {"calloc",       {"ALLOC_HEAP_RET"}},
+        {"realloc",      {"ALLOC_HEAP_RET"}},
+        {"alloca",       {"ALLOC_HEAP_RET"}},
+        {"strdup",       {"ALLOC_HEAP_RET"}},
+        {"strndup",      {"ALLOC_HEAP_RET"}},
+        {"valloc",       {"ALLOC_HEAP_RET"}},
+        {"memalign",     {"ALLOC_HEAP_RET"}},
+        {"aligned_alloc",{"ALLOC_HEAP_RET"}},
+        {"mmap",         {"ALLOC_HEAP_RET"}},
+        {"fopen",        {"ALLOC_HEAP_RET"}},
+        // Common I/O / misc (no special annotation, just need FunObjVar for isExtCall)
+        {"printf",       {}},
+        {"fprintf",      {}},
+        {"sprintf",      {}},
+        {"snprintf",     {}},
+        {"scanf",        {}},
+        {"fscanf",       {}},
+        {"sscanf",       {}},
+        {"puts",         {}},
+        {"gets",         {}},
+        {"fgets",        {}},
+        {"fputs",        {}},
+        {"fread",        {}},
+        {"fwrite",       {}},
+        {"strlen",       {}},
+        {"strcmp",       {}},
+        {"strncmp",      {}},
+        {"atoi",         {}},
+        {"atol",         {}},
+        {"atof",         {}},
+        {"strtol",       {}},
+        {"strtoul",      {}},
+        {"abs",          {}},
+        {"exit",         {}},
+        {"abort",        {}},
+        {"free",         {}},
+        {"rand",         {}},
+        {"srand",        {}},
+        {"time",         {}},
+        {"clock",        {}},
+        {"sleep",        {}},
+        {"isdigit",      {}},
+        {"isalpha",      {}},
+        {"toupper",      {}},
+        {"tolower",      {}},
+    };
+
+    auto knownIt = knownExtFuncs.find(funcName);
+    if (knownIt == knownExtFuncs.end())
+    {
+        extFunCache[funcName] = nullptr;
+        return nullptr;
+    }
+
+    // Create a minimal FunObjVar for this external function
+    NodeID objId = NodeIDAllocator::get()->allocateObjectId();
+    ObjTypeInfo* ti = pag->createObjTypeInfo(moduleSet->getPtrType());
+    ti->setFlag(ObjTypeInfo::FUNCTION_OBJ);
+    pag->idToObjTypeInfoMap()[objId] = ti;
+    pag->addFunObjNode(objId, ti, nullptr);
+
+    FunObjVar* funObj = SVFUtil::cast<FunObjVar>(pag->getGNode(objId));
+    funObj->setName(funcName);
+
+    // Create minimal BBGraph
+    BasicBlockGraph* bbGraph = new BasicBlockGraph();
+    auto* entryBB = new SVFBasicBlock(1, funObj);
+    entryBB->setName(funcName + ".entry");
+    bbGraph->addBasicBlock(entryBB);
+    auto* exitBB = new SVFBasicBlock(2, funObj);
+    exitBB->setName(funcName + ".exit");
+    bbGraph->addBasicBlock(exitBB);
+
+    // Create function type
+    std::vector<const SVFType*> paramTypes;
+    auto* svfFuncType = new SVFFunctionType(
+        moduleSet->getTypeIdCounter(), moduleSet->getPtrType(), paramTypes, true);
+    moduleSet->addOwnedType(svfFuncType);
+
+    SVFLoopAndDomInfo* loopDom = new SVFLoopAndDomInfo();
+    std::vector<const ArgValVar*> emptyArgs;
+    funObj->initFunObjVar(
+        true,   // isDecl (external)
+        false, false, false, false, true,
+        svfFuncType, loopDom, funObj, bbGraph, emptyArgs, exitBB);
+
+    // Note: ICFG entry/exit nodes are created by CTSICFGBuilder if the
+    // function was pre-registered via registerKnownExternalCalls().
+    // For functions created after ICFG build, they won't have ICFG nodes,
+    // but that's OK since external calls use IntraCFGEdge (no entry/exit needed).
+
+    // Create FunValVar
+    NodeID funValId = NodeIDAllocator::get()->allocateValueId();
+    pag->addFunValNode(funValId, nullptr, funObj, moduleSet->getPtrType());
+
+    // Register ExtAPI annotations
+    if (!knownIt->second.empty())
+    {
+        ExtAPI::getExtAPI()->setExtFuncAnnotations(funObj, knownIt->second);
+    }
+
+    extFunCache[funcName] = funObj;
+    return funObj;
 }
 
 NodeID CTSSVFIRBuilder::getFieldGepNode(TSNode fieldExpr, CTSSourceFile* file)

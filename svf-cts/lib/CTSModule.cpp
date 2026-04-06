@@ -243,6 +243,15 @@ CTSFunction* CTSModuleSet::getFunction(const std::string& name) const
     return (it != functionMap.end()) ? it->second : nullptr;
 }
 
+void CTSModuleSet::addExternalFunction(const std::string& name)
+{
+    if (functionMap.count(name)) return;  // already exists
+    TSNode nullNode = {0};
+    auto* func = new CTSFunction(name, nullNode, nullptr);
+    func->setHasBody(false);
+    functionMap[name] = func;
+}
+
 CTSGlobalVar* CTSModuleSet::getGlobalVar(const std::string& name) const
 {
     auto it = globalVarMap.find(name);

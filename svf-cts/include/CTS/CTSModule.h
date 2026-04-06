@@ -156,6 +156,9 @@ public:
     const std::map<std::string, CTSStructDef*>& getStructDefs() const { return structDefMap; }
 
     CTSFunction* getFunction(const std::string& name) const;
+
+    /// Add an external function (no body) to the function map
+    void addExternalFunction(const std::string& name);
     CTSGlobalVar* getGlobalVar(const std::string& name) const;
     CTSStructDef* getStructDef(const std::string& name) const;
 
