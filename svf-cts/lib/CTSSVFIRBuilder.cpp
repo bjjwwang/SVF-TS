@@ -2457,6 +2457,12 @@ void CTSSVFIRBuilder::registerKnownExternalCalls()
         "abs", "exit", "abort", "rand", "srand", "time", "clock", "sleep",
         "isdigit", "isalpha", "toupper", "tolower",
         "svf_assert", "svf_print",
+        // Buffer overflow checker stub functions
+        "UNSAFE_BUFACCESS", "SAFE_BUFACCESS",
+        // Common IO/print stubs from test harness
+        "printLine", "printWLine", "printIntLine", "printShortLine",
+        "printFloatLine", "printLongLine", "printLongLongLine",
+        "printUnsignedLine", "printHexCharLine", "printSizeTLine",
     };
 
     // Walk all source files' ASTs looking for call_expression with known names

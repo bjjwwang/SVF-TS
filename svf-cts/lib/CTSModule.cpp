@@ -35,9 +35,22 @@ bool CTSSourceFile::parse()
     // Run C preprocessor to expand macros and process #include.
     // -P: no line markers; -D__attribute__(x)=: strip GCC attributes
     // We keep system include paths so stdbool.h etc. can be found.
-    std::string cmd = "cpp -P -D'__attribute__(x)=' -D'__extension__=' "
-                      "-D'__builtin_va_list=void*' -D'__asm__(x)=' "
-                      "\"" + filePath + "\" 2>/dev/null";
+    std::string cmd = "cpp -P -DINCLUDEMAIN "
+                      "-D'__attribute__(x)=' -D'__extension__=' "
+                      "-D'__builtin_va_list=void*' -D'__asm__(x)=' ";
+    // Add include path from the source file's directory
+    {
+        size_t lastSlash = filePath.rfind('/');
+        if (lastSlash != std::string::npos)
+            cmd += "-I\"" + filePath.substr(0, lastSlash) + "\" ";
+    }
+    // Add any extra include paths set on the module set
+    if (CTSModuleSet::getModuleSet())
+    {
+        for (const auto& inc : CTSModuleSet::getModuleSet()->getIncludePaths())
+            cmd += "-I\"" + inc + "\" ";
+    }
+    cmd += "\"" + filePath + "\" 2>/dev/null";
     FILE* pipe = popen(cmd.c_str(), "r");
     if (pipe)
     {

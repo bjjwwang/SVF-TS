@@ -148,6 +148,7 @@ public:
     /// Include path management
     void setIncludePaths(const std::vector<std::string>& paths) { includePaths = paths; }
     void addIncludePath(const std::string& path) { includePaths.push_back(path); }
+    const std::vector<std::string>& getIncludePaths() const { return includePaths; }
 
     /// Accessors
     const std::vector<CTSSourceFile*>& getSourceFiles() const { return sourceFiles; }
