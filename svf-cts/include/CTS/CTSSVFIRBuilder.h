@@ -39,7 +39,10 @@ private:
                            const SVFType* type);
 
     /// Create a HeapObjVar for malloc/calloc allocation
-    NodeID createHeapObj(TSNode allocSite, CTSSourceFile* file, const ICFGNode* icfgNode);
+    NodeID createHeapObj(TSNode allocSite, CTSSourceFile* file, const ICFGNode* icfgNode, u32_t byteSize = 0);
+
+    /// Try to evaluate a constant expression (for sizeof, alloc size, etc.)
+    u32_t tryEvalConstExpr(TSNode expr, CTSSourceFile* file);
 
     /// Create a new ValVar (for SSA versions, expression temporaries, etc.)
     NodeID createValNode(const SVFType* type, const ICFGNode* icfgNode);

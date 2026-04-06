@@ -141,6 +141,16 @@ NodeID CTSSVFIRBuilder::createLocalVar(const std::string& name, TSNode node,
     NodeID objId = NodeIDAllocator::get()->allocateObjectId();
     ObjTypeInfo* ti = pag->createObjTypeInfo(type);
     ti->setFlag(ObjTypeInfo::STACK_OBJ);
+    // Set byte size for arrays (needed for buffer overflow detection)
+    if (type)
+    {
+        u32_t byteSize = type->getByteSize();
+        if (byteSize > 0)
+        {
+            ti->setByteSizeOfObj(byteSize);
+            ti->setNumOfElements(byteSize);
+        }
+    }
     pag->idToObjTypeInfoMap()[objId] = ti;
     pag->addStackObjNode(objId, ti, icfgNode);
     pag->getGNode(objId)->setName(name);
@@ -187,11 +197,16 @@ NodeID CTSSVFIRBuilder::createGlobalVar(const std::string& name, TSNode node,
 }
 
 NodeID CTSSVFIRBuilder::createHeapObj(TSNode allocSite, CTSSourceFile* file,
-                                       const ICFGNode* icfgNode)
+                                       const ICFGNode* icfgNode, u32_t byteSize)
 {
     NodeID objId = NodeIDAllocator::get()->allocateObjectId();
     ObjTypeInfo* ti = pag->createObjTypeInfo(moduleSet->getPtrType());
     ti->setFlag(ObjTypeInfo::HEAP_OBJ);
+    if (byteSize > 0)
+    {
+        ti->setByteSizeOfObj(byteSize);
+        ti->setNumOfElements(byteSize);
+    }
     pag->idToObjTypeInfoMap()[objId] = ti;
     pag->addHeapObjNode(objId, ti, icfgNode);
     pag->getGNode(objId)->setName("heap_obj");
@@ -1011,7 +1026,15 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
         };
         if (allocNames.count(funcName))
         {
-            return createHeapObj(call, file, currentICFGNode);
+            // Try to extract allocation size from first argument
+            u32_t allocSize = 0;
+            TSNode args = ts_node_child_by_field_name(call, "arguments", 9);
+            if (!ts_node_is_null(args) && ts_node_named_child_count(args) > 0)
+            {
+                TSNode sizeArg = ts_node_named_child(args, 0);
+                allocSize = tryEvalConstExpr(sizeArg, file);
+            }
+            return createHeapObj(call, file, currentICFGNode, allocSize);
         }
     }
 
@@ -1126,7 +1149,11 @@ NodeID CTSSVFIRBuilder::processCallExpr(TSNode call, CTSSourceFile* file)
                 // address in the abstract domain, matching LLVM frontend behavior.
                 if (SVFUtil::isHeapAllocExtFunViaRet(calleeFunObj))
                 {
-                    NodeID heapVal = createHeapObj(call, file, resultICFGNode);
+                    u32_t allocSz = 0;
+                    TSNode callArgs = ts_node_child_by_field_name(call, "arguments", 9);
+                    if (!ts_node_is_null(callArgs) && ts_node_named_child_count(callArgs) > 0)
+                        allocSz = tryEvalConstExpr(ts_node_named_child(callArgs, 0), file);
+                    NodeID heapVal = createHeapObj(call, file, resultICFGNode, allocSz);
                     if (retICFGNode)
                         pag->addCallSiteRets(retICFGNode, pag->getGNode(heapVal));
                     currentICFGNode = retICFGNode ? static_cast<ICFGNode*>(retICFGNode) : savedICFGNode;
@@ -2484,6 +2511,81 @@ ICFGNode* CTSSVFIRBuilder::getICFGNode(TSNode stmt, CTSSourceFile* file)
 {
     if (!icfgBuilder) return nullptr;
     return icfgBuilder->getStmtICFGNode(stmt, file);
+}
+
+u32_t CTSSVFIRBuilder::tryEvalConstExpr(TSNode expr, CTSSourceFile* file)
+{
+    if (ts_node_is_null(expr)) return 0;
+    const char* type = ts_node_type(expr);
+
+    if (strcmp(type, "number_literal") == 0)
+    {
+        std::string text = CTSParser::getNodeText(expr, file->getSource());
+        try { return (u32_t)std::stoul(text); }
+        catch (...) { return 0; }
+    }
+
+    if (strcmp(type, "sizeof_expression") == 0)
+    {
+        TSNode arg = ts_node_named_child(expr, 0);
+        if (!ts_node_is_null(arg))
+        {
+            std::string argText = CTSParser::getNodeText(arg, file->getSource());
+            if (argText.front() == '(') argText = argText.substr(1);
+            if (argText.back() == ')') argText.pop_back();
+            while (!argText.empty() && argText.front() == ' ') argText.erase(0, 1);
+            while (!argText.empty() && argText.back() == ' ') argText.pop_back();
+
+            if (argText == "char" || argText == "unsigned char") return 1;
+            if (argText == "short" || argText == "unsigned short") return 2;
+            if (argText == "int" || argText == "unsigned int" || argText == "unsigned" || argText == "float") return 4;
+            if (argText == "long" || argText == "unsigned long" || argText == "double" ||
+                argText == "long long" || argText == "int64_t" || argText == "uint64_t" ||
+                argText == "size_t") return 8;
+            if (argText.find('*') != std::string::npos) return 8;
+            // Struct lookup
+            std::string sn = argText;
+            if (sn.find("struct ") == 0) sn = sn.substr(7);
+            CTSStructDef* sd = moduleSet->getStructDef(sn);
+            if (sd && sd->getSVFType()) return sd->getSVFType()->getByteSize();
+        }
+        return 8; // default pointer size
+    }
+
+    if (strcmp(type, "parenthesized_expression") == 0)
+    {
+        TSNode inner = ts_node_named_child(expr, 0);
+        return tryEvalConstExpr(inner, file);
+    }
+
+    if (strcmp(type, "binary_expression") == 0)
+    {
+        TSNode left = ts_node_child_by_field_name(expr, "left", 4);
+        TSNode right = ts_node_child_by_field_name(expr, "right", 5);
+        TSNode op = ts_node_child_by_field_name(expr, "operator", 8);
+        u32_t lv = tryEvalConstExpr(left, file);
+        u32_t rv = tryEvalConstExpr(right, file);
+        if (!ts_node_is_null(op))
+        {
+            std::string opText = CTSParser::getNodeText(op, file->getSource());
+            if (opText == "*") return lv * rv;
+            if (opText == "+") return lv + rv;
+            if (opText == "-") return lv > rv ? lv - rv : 0;
+            if (opText == "/") return rv > 0 ? lv / rv : 0;
+        }
+        return 0;
+    }
+
+    // Cast expression: (type)expr
+    if (strcmp(type, "cast_expression") == 0)
+    {
+        // The value is the last named child
+        u32_t count = ts_node_named_child_count(expr);
+        if (count > 0)
+            return tryEvalConstExpr(ts_node_named_child(expr, count - 1), file);
+    }
+
+    return 0;
 }
 
 void CTSSVFIRBuilder::registerKnownExternalCalls()
