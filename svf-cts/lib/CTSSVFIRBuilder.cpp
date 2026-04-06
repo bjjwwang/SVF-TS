@@ -806,6 +806,13 @@ void CTSSVFIRBuilder::processDeclaration(TSNode decl, CTSSourceFile* file)
             strcmp(ts_node_type(innerDecl), "array_declarator") == 0)
         {
             unsigned arraySize = CTSParser::getArraySize(innerDecl, file->getSource());
+            // If simple stoul failed (e.g. "10+1"), try constant expression eval
+            if (arraySize == 0)
+            {
+                TSNode sizeNode = ts_node_child_by_field_name(innerDecl, "size", 4);
+                if (!ts_node_is_null(sizeNode))
+                    arraySize = tryEvalConstExpr(sizeNode, file);
+            }
             if (arraySize > 0 && type)
                 type = moduleSet->createArrayType(type, arraySize);
         }
@@ -837,6 +844,25 @@ void CTSSVFIRBuilder::processDeclaration(TSNode decl, CTSSourceFile* file)
                         AccessPath ap((APOffset)idx, elemType);
                         addGepEdge(valId, gepNode, ap, /*constGep=*/true);
                         addStoreEdge(elemVal, gepNode, currentICFGNode);
+                    }
+                }
+                // String literal init for char arrays: "ABC" → store each char + '\0'
+                else if (strcmp(ts_node_type(init), "string_literal") == 0 &&
+                         type && SVFUtil::isa<SVFArrayType>(type))
+                {
+                    std::string text = CTSParser::getNodeText(init, file->getSource());
+                    // Strip quotes
+                    if (text.size() >= 2 && text.front() == '"' && text.back() == '"')
+                        text = text.substr(1, text.size() - 2);
+                    const SVFType* elemType = SVFUtil::cast<SVFArrayType>(type)->getTypeOfElement();
+                    for (u32_t idx = 0; idx <= text.size(); idx++)
+                    {
+                        char ch = (idx < text.size()) ? text[idx] : '\0';
+                        NodeID charVal = createConstIntNode((s64_t)ch, currentICFGNode);
+                        NodeID gepNode = createValNode(moduleSet->getPtrType(), currentICFGNode);
+                        AccessPath ap((APOffset)idx, elemType);
+                        addGepEdge(valId, gepNode, ap, /*constGep=*/true);
+                        addStoreEdge(charVal, gepNode, currentICFGNode);
                     }
                 }
                 else

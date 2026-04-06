@@ -1317,6 +1317,8 @@ void AbstractInterpretation::collectCheckPoint()
         {
             if (const FunObjVar *fun = call->getCalledFunction())
             {
+                // Debug: print all CallICFGNode calledFunction names
+
                 if (ae_checkpoint_names.find(fun->getName()) !=
                         ae_checkpoint_names.end())
                 {
