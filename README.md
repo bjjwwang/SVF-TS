@@ -3,7 +3,12 @@
 
 ## SVF-TS Progress: Tree-Sitter C Frontend (Phase 1 — AE)
 
-**Target**: 108 ae\_assert\_tests | **Current**: 72 / 108 (67%) | **Baseline**: 47 / 108 (43%) | **ICFG Viewer**: [icfg.bjjwwangs.win](https://icfg.bjjwwangs.win)
+**ICFG Viewer**: [icfg.bjjwwangs.win](https://icfg.bjjwwangs.win)
+
+| Test Suite | CTS Pass | Total | CTS Rate | LLVM Rate |
+|-----------|----------|-------|----------|-----------|
+| ae\_assert\_tests | 72 | 108 | **67%** | ~100% |
+| ae\_overflow\_tests | 29 | 63 | **46%** | 86% |
 
 ### Detailed Results (72 PASS / 14 VF / 22 NC)
 
@@ -34,6 +39,23 @@
 | malloc + branch + deref | 1 | br\_nd\_malloc | malloc + if branch + pointer deref |
 | alloca + sizeof + no assert | 1 | ptr\_s32\_2 | No svf\_assert in source |
 
+### Overflow Detection Results (29 PASS / 14 FP / 6 BOT / 14 NC)
+
+| Status | Count | Cases |
+|--------|-------|-------|
+| **PASS (29)** | memcpy/memmove/snprintf/cpy/strcat types | CWE121\_CWE129\_rand, CWE121\_CWE131\_memcpy, CWE121\_CWE805\_{char\_alloca\_memcpy, char\_declare\_memmove, char\_declare\_ncpy, int64\_t\_alloca\_memmove, int64\_t\_declare\_memcpy, int64\_t\_declare\_memmove, int\_alloca\_memcpy, wchar\_t\_alloca\_loop/snprintf, wchar\_t\_declare\_loop/memcpy/memmove/snprintf}, CWE121\_{dest\_wchar\_t\_alloca\_cpy, src\_char\_alloca\_cpy, src\_wchar\_t\_declare\_cpy}, CWE122\_{int64\_t\_memcpy/memmove, int\_memmove, wchar\_t\_memmove/snprintf, dest\_char/wchar\_t\_cpy, CWE131\_memcpy}, CWE126\_CWE129\_fgets, ExtAPI\_strcat\_01/02 |
+| **FP (14)** | SAFE\_BUFACCESS false positive (loop widen) | CWE121\_{CWE129\_fgets, CWE131\_loop, CWE193\_char\_alloca\_cpy, CWE193\_wchar\_t\_declare\_cpy, CWE805\_int64\_t\_declare\_loop, CWE805\_int\_alloca\_loop, CWE805\_struct\_alloca/declare\_memmove}, CWE122\_{CWE805\_struct\_memcpy, CWE131\_loop}, CWE126\_{char\_declare\_loop, malloc\_char/wchar\_t\_loop, wchar\_t\_declare\_loop} |
+| **BOT (6)** | SAFE\_BUFACCESS size is bottom | CWE121\_CWE805\_char\_alloca\_loop, CWE121\_CWE806\_{char\_declare\_loop, wchar\_t\_declare\_memcpy}, CWE122\_CWE806\_wchar\_t\_memmove, CWE126\_{malloc\_wchar\_t\_memmove, wchar\_t\_declare\_memmove} |
+| **NC (14)** | AE doesn't reach stub calls | CWE121\_{CWE129\_listen\_socket, CWE193\_char\_alloca\_memcpy/memmove, CWE193\_char\_declare\_memmove, CWE806\_char\_declare\_ncpy}, CWE122\_{CWE806\_char\_memmove, src\_char\_cpy}, CWE126\_{char\_alloca/declare\_memcpy, CWE129\_fscanf/listen\_socket, malloc\_char\_memmove}, ExtAPI\_strcat\_03/04 |
+
+### Overflow Failure Root Causes (34)
+
+| Root Cause | Count | Difficulty |
+|------------|-------|------------|
+| Loop widen false positive: `SAFE_BUFACCESS` inside for-loop, AE widens loop var to \[0,+INF\], access size upper bound exceeds alloca size | 14 | AE loop analysis precision (not CTS issue) |
+| strlen/wcslen return value bottom: size argument `strlen(s)*sizeof(char)` not evaluable | 6 | Need strlen ExtAPI handler to work with CTS FunObjVar |
+| Control flow unreachable: AE doesn't traverse into callee or listen\_socket/fscanf blocks | 14 | Mixed: network API stubs, strlen-dependent branches, char literal init |
+
 ### Key Fixes Applied
 
 1. **External call ICFG edges** — intra-edge instead of call/ret for external functions
@@ -56,6 +78,12 @@
 18. **C preprocessor** — `cpp -P` runs before tree-sitter to expand macros and process `#include`
 19. **goto/label ICFG edges** — labeled\_statement records label→node map, goto\_statement creates deferred edge
 20. **Switch BranchStmt** — switch generates BranchStmt with case values for AE's isSwitchBranchFeasible
+21. **sizeof resolution** — `sizeof(int)=4`, `sizeof(char)=1`, `sizeof(long)=8`, struct lookup. Was hardcoded 8.
+22. **Alloca/malloc size tracking** — `createHeapObj` sets ObjTypeInfo byte size from `tryEvalConstExpr(sizeArg)`
+23. **Stack object byte size** — `createLocalVar` sets ObjTypeInfo byte size from SVFType (e.g. `int[10]`→40)
+24. **Stub headers** — `svf-cts/include/CTS/stubs/` provides empty system headers for `-nostdinc` preprocessor
+25. **Dynamic FunObjVar** — `getOrCreateExtFunObjVar` creates FunObjVar + ExtAPI annotations for undeclared external calls
+26. **Overflow stub functions** — `UNSAFE_BUFACCESS`/`SAFE_BUFACCESS` registered as known externals for BufOverflowDetector
 
 ---
 
