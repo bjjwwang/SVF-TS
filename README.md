@@ -3,32 +3,36 @@
 
 ## SVF-TS Progress: Tree-Sitter C Frontend (Phase 1 — AE)
 
-**Target**: 108 ae\_assert\_tests | **Current**: 69 / 108 (64%) | **Baseline**: 47 / 108 (43%) | **ICFG Viewer**: [icfg.bjjwwangs.win](https://icfg.bjjwwangs.win)
+**Target**: 108 ae\_assert\_tests | **Current**: 72 / 108 (67%) | **Baseline**: 47 / 108 (43%) | **ICFG Viewer**: [icfg.bjjwwangs.win](https://icfg.bjjwwangs.win)
 
-### Detailed Results (69 PASS / 15 NC / 12 VF / 12 complex)
+### Detailed Results (72 PASS / 14 VF / 22 NC)
 
 | Status | Cases |
 |--------|-------|
-| **PASS (69)** | BASIC\_assign\_0/1/2/3, BASIC\_bi\_add\_0/1/2, BASIC\_bi\_div\_0, BASIC\_bi\_mix\_0, BASIC\_bi\_mul\_0, BASIC\_br\_false/true\_0, BASIC\_br\_nd\_0/1/2, BASIC\_funcall\_ref\_0/1/2, BASIC\_ptr\_assign\_0, BASIC\_ptr\_call1/2, BASIC\_ptr\_func\_0, BASIC\_nullptr\_def, BASIC\_struct\_assign, BASIC\_array\_struct, BASIC\_array\_2d, BASIC\_array\_varIdx\_1, BASIC\_arraycopy2, BASIC\_switch/01-10, BASIC\_test\_11, CAST\_fptosi/fptoui/fptrunc/sext/sitofp/uitofp/zext, cwe121\_{char,int,int64,struct}\_alloc, cwe190\_int\_max, INTERVAL\_test\_6/8/9/11/12/13/15/16, LOOP\_for01/for\_call/for\_inc/while01, wto\_assert\_01-05 |
-| **NC (15)** | BASIC\_array\_func\_3, BASIC\_array\_int, BASIC\_br\_nd\_malloc, BASIC\_ptr\_s32\_2, BASIC\_struct\_array, BUF\_OVERFLOW\_47, cwe190\_char\_fscanf, INTERVAL\_test\_58/64, CVE-2019-19847, CVE-2021-44975, CVE-2021-45341, CVE-2022-29023, CVE-2022-34835, CVE-2022-34918 |
-| **VF (12)** | BASIC\_arraycopy1/3, BASIC\_array\_func\_0/4/6, BASIC\_ptr\_func\_1/4/6, CAST\_trunc, cwe126\_char, CWE127\_har, INTERVAL\_test\_14/19/2/20/36-1/49 |
-| **NC (12 CVE)** | CVE-2020-13598, CVE-2020-29203, CVE-2021-39602, CVE-2022-23850, CVE-2022-26129, CVE-2022-27239, CVE-2022-34913 |
+| **PASS (72)** | BASIC\_assign\_0/1/2/3, BASIC\_bi\_add/div/mix/mul, BASIC\_br\_false/true/nd\_0/1/2, BASIC\_funcall\_ref\_0/1/2, BASIC\_ptr\_assign/call1/call2/func\_0, BASIC\_struct\_assign, BASIC\_array\_{2d,struct,func\_0/4/6,varIdx\_1,copy2}, BASIC\_switch/01-10, BASIC\_test\_11, CAST\_fptosi/fptoui/fptrunc/sext/sitofp/uitofp/zext, cwe121\_{char,int,int64,struct}\_alloc, cwe190\_{int\_max,char\_fscanf}, INTERVAL\_test\_6/8/9/11/12/13/15/16, LOOP\_for01/for\_call/for\_inc/while01, wto\_assert\_01-05 |
+| **VF (14)** | BASIC\_arraycopy1/3, BASIC\_array\_int, BASIC\_nullptr\_def, BASIC\_ptr\_func\_1/4/6, CAST\_trunc, cwe126\_char, CWE127\_har, INTERVAL\_test\_2/14/19/20/36-1/49 |
+| **NC (22)** | BASIC\_array\_func\_3, BASIC\_br\_nd\_malloc, BASIC\_ptr\_s32\_2, BASIC\_struct\_array, BUF\_OVERFLOW\_47, INTERVAL\_test\_58/64, 13× CVE (no svf\_assert) |
 
-### Remaining Failures by Root Cause (39)
+### Remaining Failures by Root Cause (36)
 
-| Root Cause | Count | Status |
-|------------|-------|--------|
-| foo(&a) pointer-param write-back not tracked after return | 9 | Blocker: AE address domain propagation through CallPE→Store→Load→Store chain |
-| Cross-function array/pointer GEP (address domain) | 4 | Same root cause as foo(&a) — address doesn't propagate through call |
-| String ops modeled but alloca/pointer combo fails | 3 | memcpy/strcpy registered, but alloca→pointer→GEP chain incomplete |
-| Function pointer indirect call | 3 | PTA-based indirect call resolution not wired in CTS |
-| scanf/rand return value not modeled | 2 | Need ExtAPI annotation or special handling |
-| && condition narrowing | 1 | Needs nested condNode ICFG structure |
-| Cast truncation (int64→int8) | 1 | CopyStmt doesn't model truncation |
-| Missing extern decl (svf\_assert) | 1 | Test file missing `extern void svf_assert(...)` |
-| Global array init (AE doesn't GEP on GlobalICFGNode) | 1 | ICFG correct but AE may skip global GEP processing |
-| Uninitialized vars + goto | 2 | goto not modeled in ICFG |
-| Complex CVE patterns (struct+string+branch) | 12 | Multiple issues combined |
+| Root Cause | Count | Cases | Difficulty |
+|------------|-------|-------|------------|
+| CVE/BUF (no svf\_assert — buffer overflow detection, not assertion verification) | 14 | all CVE + BUF\_OVERFLOW | N/A (LLVM also NC) |
+| Function pointer indirect call (`q=c; q(&y)`) | 3 | ptr\_func\_1/4/6 | Need PTA indirect call resolution |
+| alloca + memcpy/strcpy chain | 3 | cwe126, CWE127, INTERVAL\_36-1 | ExtAPI registered but byte-level copy incomplete |
+| switch inside callee | 1 | INTERVAL\_test\_19 | BranchStmt added, narrowing needs work |
+| && double narrowing | 1 | INTERVAL\_test\_14 | Needs nested condNode |
+| goto loop (WTO) | 1 | INTERVAL\_test\_49 | goto edge added, WTO convergence issue |
+| scanf/rand | 2 | INTERVAL\_test\_2/20 | External return value modeling |
+| cast trunc (int64→int8) | 1 | CAST\_trunc | Need truncation BinaryOPStmt |
+| global array init | 1 | BASIC\_arraycopy3 | GlobalICFGNode GEP exists, AE skips |
+| typedef struct + alloca combo | 1 | BASIC\_nullptr\_def (regression) | cpp expanded ALLOCA, typedef struct interaction |
+| pointer arithmetic (`a+9`) | 1 | BASIC\_array\_int | `int *p = a + 9` pointer add not modeled |
+| missing svf\_assert decl | 1 | BASIC\_arraycopy1 | Source file lacks `extern void svf_assert` |
+| struct + typedef + dynamic index | 2 | array\_func\_3, struct\_array | typedef struct field access |
+| uninitialized + complex control flow | 2 | INTERVAL\_58/64 | do-while + for nesting |
+| malloc + branch + deref | 1 | br\_nd\_malloc | malloc + if branch + pointer deref |
+| alloca + sizeof + no assert | 1 | ptr\_s32\_2 | No svf\_assert in source |
 
 ### Key Fixes Applied
 
@@ -48,6 +52,10 @@
 14. **ExtAPI annotations** — memcpy/strcpy/memset registered via `registerKnownExternalCalls()`
 15. **Variant GEP type** — pass ptr type for variable-index subscript (matches LLVM getElementIndex)
 16. **ICFG stmt display** — variable names, const values, GEP offsets, Load/Store dereference marks
+17. **Array name decay** — array identifier in expression returns address directly (no Load), matching C array-to-pointer decay
+18. **C preprocessor** — `cpp -P` runs before tree-sitter to expand macros and process `#include`
+19. **goto/label ICFG edges** — labeled\_statement records label→node map, goto\_statement creates deferred edge
+20. **Switch BranchStmt** — switch generates BranchStmt with case values for AE's isSwitchBranchFeasible
 
 ---
 
