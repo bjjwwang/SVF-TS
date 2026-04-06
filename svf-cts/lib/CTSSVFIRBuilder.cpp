@@ -1553,15 +1553,24 @@ void CTSSVFIRBuilder::processForStatement(TSNode forStmt, CTSSourceFile* file)
 
 void CTSSVFIRBuilder::processSwitchStatement(TSNode switchStmt, CTSSourceFile* file)
 {
-    // Process condition
+    // Get the condNode that ICFG builder created for this switch
+    ICFGNode* condNode = getICFGNode(switchStmt, file);
+
+    // Evaluate the switch condition on condNode
     TSNode cond = ts_node_child_by_field_name(switchStmt, "condition", 9);
+    NodeID condVar = blackHoleNode;
     if (!ts_node_is_null(cond))
     {
-        getExprValue(cond, file);
+        ICFGNode* savedNode = currentICFGNode;
+        if (condNode) currentICFGNode = condNode;
+        condVar = getExprValue(cond, file);
+        currentICFGNode = savedNode;
     }
 
-    // Process body (compound_statement containing case_statement nodes)
+    // Collect case nodes and their values for BranchStmt
     TSNode body = ts_node_child_by_field_name(switchStmt, "body", 4);
+    BranchStmt::SuccAndCondPairVec successors;
+
     if (!ts_node_is_null(body))
     {
         uint32_t count = ts_node_named_child_count(body);
@@ -1571,24 +1580,61 @@ void CTSSVFIRBuilder::processSwitchStatement(TSNode switchStmt, CTSSourceFile* f
             const char* childType = ts_node_type(child);
             if (strcmp(childType, "case_statement") == 0)
             {
-                // Process statements inside case (skip the case value itself)
+                // Get case value: first child is the value expression
+                // case_statement has "value" field for case X:, null for default:
+                TSNode caseValue = ts_node_child_by_field_name(child, "value", 5);
+                s64_t val = -1; // default case
+                if (!ts_node_is_null(caseValue))
+                {
+                    std::string valText = CTSParser::getNodeText(caseValue, file->getSource());
+                    // Handle integer literals and char literals
+                    if (valText.size() >= 2 && valText[0] == '\'')
+                        val = (s64_t)valText[1];
+                    else
+                    {
+                        try { val = std::stol(valText); }
+                        catch (...) { val = -1; }
+                    }
+                }
+
+                // Find the ICFG node for this case's first statement
+                ICFGNode* caseICFGNode = nullptr;
                 uint32_t caseCount = ts_node_named_child_count(child);
                 for (uint32_t j = 0; j < caseCount; j++)
                 {
                     TSNode caseChild = ts_node_named_child(child, j);
+                    caseICFGNode = getICFGNode(caseChild, file);
+                    if (caseICFGNode) break;
+                }
+                if (caseICFGNode)
+                    successors.push_back(std::make_pair(caseICFGNode, val));
+
+                // Process statements inside case
+                for (uint32_t j = 0; j < caseCount; j++)
+                {
+                    TSNode caseChild = ts_node_named_child(child, j);
                     const char* ccType = ts_node_type(caseChild);
-                    // Skip case value (number_literal etc.) and break_statement
                     if (strcmp(ccType, "break_statement") == 0) continue;
                     if (strcmp(ccType, "expression_statement") == 0 ||
                         strcmp(ccType, "declaration") == 0 ||
                         strcmp(ccType, "return_statement") == 0 ||
-                        strcmp(ccType, "compound_statement") == 0)
+                        strcmp(ccType, "compound_statement") == 0 ||
+                        strcmp(ccType, "if_statement") == 0)
                     {
                         processStatement(caseChild, file);
                     }
                 }
             }
         }
+    }
+
+    // Create BranchStmt on condNode (for AE's isSwitchBranchFeasible)
+    if (condNode && condVar != blackHoleNode && !successors.empty())
+    {
+        ICFGNode* savedNode = currentICFGNode;
+        currentICFGNode = condNode;
+        addBranchEdge(condVar, condVar, successors);
+        currentICFGNode = savedNode;
     }
 }
 
