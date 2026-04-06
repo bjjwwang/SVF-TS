@@ -3,35 +3,51 @@
 
 ## SVF-TS Progress: Tree-Sitter C Frontend (Phase 1 — AE)
 
-**Target**: 108 ae\_assert\_tests from TS-TestSuite | **Current**: 71 / 108 (65%) | **Baseline**: 47 / 108 (43%)
+**Target**: 108 ae\_assert\_tests | **Current**: 69 / 108 (64%) | **Baseline**: 47 / 108 (43%) | **ICFG Viewer**: [icfg.bjjwwangs.win](https://icfg.bjjwwangs.win)
 
-### Remaining Failures (37)
+### Detailed Results (69 PASS / 15 NC / 12 VF / 12 complex)
 
-| Category | Count | Root Cause | Status |
-|----------|-------|------------|--------|
-| if/else + scanf/rand (both branches have assert) | 6 | `scanf("%d", &a)` writes to `a` via pointer — memory effect not modeled. `a` stays uninitialized instead of top. Branch constraint works for single if, but if/else needs `a` to have a value first. | TODO: model scanf pointer write |
-| `&&` condition (`if(a>0 && a<=5)`) | 5 | `&&` returns rhs CmpStmt only. Single-side narrowing (e.g., `a<=5` but not `a>0`). Correct fix: nested ICFG branches (short-circuit). | Partial |
-| Array passed to function (`getValue(arr, 1)`) | 2 | Array base address passed via CallPE, but GEP inside callee may not resolve correctly. | TODO |
-| Array initializer list (`char s[2]={'A','B'}`) | 2 | Initializer list returns first element only; `s[1]` can't get `'B'`. | TODO |
-| External function memory effects (memset/memcpy/alloca) | 2 | These write to memory through pointers. Not modeled. | TODO |
-| Function pointer indirect call (`(*q)(&y)`) | 1 | Indirect call resolution via PTA not wired up in CTS. | TODO |
-| goto/label (`goto LOOP`) | 1 | ICFG builder doesn't handle goto. | TODO |
-| Cast truncation (`(int8_t)256 == 0`) | 1 | CopyStmt doesn't model integer truncation. | TODO |
-| `if(nd())` — function call in condition | 6 | ICFG builder doesn't create CallICFGNode for calls inside if/while/for conditions. | TODO |
-| Complex C features (2D array, typedef struct, enum, macro) | 10 | Tree-Sitter parses these but SVFIR builder doesn't handle them. | TODO |
+| Status | Cases |
+|--------|-------|
+| **PASS (69)** | BASIC\_assign\_0/1/2/3, BASIC\_bi\_add\_0/1/2, BASIC\_bi\_div\_0, BASIC\_bi\_mix\_0, BASIC\_bi\_mul\_0, BASIC\_br\_false/true\_0, BASIC\_br\_nd\_0/1/2, BASIC\_funcall\_ref\_0/1/2, BASIC\_ptr\_assign\_0, BASIC\_ptr\_call1/2, BASIC\_ptr\_func\_0, BASIC\_nullptr\_def, BASIC\_struct\_assign, BASIC\_array\_struct, BASIC\_array\_2d, BASIC\_array\_varIdx\_1, BASIC\_arraycopy2, BASIC\_switch/01-10, BASIC\_test\_11, CAST\_fptosi/fptoui/fptrunc/sext/sitofp/uitofp/zext, cwe121\_{char,int,int64,struct}\_alloc, cwe190\_int\_max, INTERVAL\_test\_6/8/9/11/12/13/15/16, LOOP\_for01/for\_call/for\_inc/while01, wto\_assert\_01-05 |
+| **NC (15)** | BASIC\_array\_func\_3, BASIC\_array\_int, BASIC\_br\_nd\_malloc, BASIC\_ptr\_s32\_2, BASIC\_struct\_array, BUF\_OVERFLOW\_47, cwe190\_char\_fscanf, INTERVAL\_test\_58/64, CVE-2019-19847, CVE-2021-44975, CVE-2021-45341, CVE-2022-29023, CVE-2022-34835, CVE-2022-34918 |
+| **VF (12)** | BASIC\_arraycopy1/3, BASIC\_array\_func\_0/4/6, BASIC\_ptr\_func\_1/4/6, CAST\_trunc, cwe126\_char, CWE127\_har, INTERVAL\_test\_14/19/2/20/36-1/49 |
+| **NC (12 CVE)** | CVE-2020-13598, CVE-2020-29203, CVE-2021-39602, CVE-2022-23850, CVE-2022-26129, CVE-2022-27239, CVE-2022-34913 |
+
+### Remaining Failures by Root Cause (39)
+
+| Root Cause | Count | Status |
+|------------|-------|--------|
+| foo(&a) pointer-param write-back not tracked after return | 9 | Blocker: AE address domain propagation through CallPE→Store→Load→Store chain |
+| Cross-function array/pointer GEP (address domain) | 4 | Same root cause as foo(&a) — address doesn't propagate through call |
+| String ops modeled but alloca/pointer combo fails | 3 | memcpy/strcpy registered, but alloca→pointer→GEP chain incomplete |
+| Function pointer indirect call | 3 | PTA-based indirect call resolution not wired in CTS |
+| scanf/rand return value not modeled | 2 | Need ExtAPI annotation or special handling |
+| && condition narrowing | 1 | Needs nested condNode ICFG structure |
+| Cast truncation (int64→int8) | 1 | CopyStmt doesn't model truncation |
+| Missing extern decl (svf\_assert) | 1 | Test file missing `extern void svf_assert(...)` |
+| Global array init (AE doesn't GEP on GlobalICFGNode) | 1 | ICFG correct but AE may skip global GEP processing |
+| Uninitialized vars + goto | 2 | goto not modeled in ICFG |
+| Complex CVE patterns (struct+string+branch) | 12 | Multiple issues combined |
 
 ### Key Fixes Applied
 
-1. **External call ICFG edges** — intra-edge instead of call/ret for external functions (matching LLVM frontend)
+1. **External call ICFG edges** — intra-edge instead of call/ret for external functions
 2. **If-branch condition labeling** — fixed empty-body and unresolvable then-node cases
-3. **While/for loop branch conditions** — switch `currentICFGNode` to condNode before condition evaluation
-4. **CallPE/RetPE registration** — register on ICFGNode stmt list and CallCFGEdge/RetCFGEdge
-5. **Return value propagation** — create result node and StoreStmt on RetICFGNode, not CallICFGNode
-6. **External call return value** — no RetPE for externals; handleExtAPI sets actualRet directly
+3. **While/for loop branch conditions** — switch `currentICFGNode` to condNode
+4. **CallPE/RetPE registration** — register on ICFGNode stmt list + CallCFGEdge/RetCFGEdge
+5. **Return value on RetICFGNode** — StoreStmt after RetPE, not before
+6. **External call return** — no RetPE for externals; handleExtAPI sets actualRet
 7. **ArgValVar type** — use pointer type so CallPE enters Andersen's constraint graph
 8. **`&&`/`||` modeling** — return CmpStmt result instead of BinaryOPStmt::And
-9. **`true`/`false`/`NULL`** constants, char literals, hex/octal numbers, update expressions
-10. **Parameter processing** — set currentICFGNode to FunEntry before creating param AddrStmt/StoreStmt (was orphaned, AE couldn't see them)
+9. **Constants** — `true`/`false`/`NULL`, char literals, hex/octal, update expressions
+10. **Parameter processing** — currentICFGNode = FunEntry before param AddrStmt/StoreStmt
+11. **Allocator modeling** — malloc/calloc/alloca/ALLOCA create HeapObjVar + AddrStmt
+12. **Pointer subscript** — `int* p; p[i]` loads pointer before GEP; `->` vs `.` distinguished
+13. **Array initializer list** — `{1,2,3}` generates per-element GEP+Store (local + global)
+14. **ExtAPI annotations** — memcpy/strcpy/memset registered via `registerKnownExternalCalls()`
+15. **Variant GEP type** — pass ptr type for variable-index subscript (matches LLVM getElementIndex)
+16. **ICFG stmt display** — variable names, const values, GEP offsets, Load/Store dereference marks
 
 ---
 
