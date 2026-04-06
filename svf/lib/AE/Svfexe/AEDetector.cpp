@@ -121,7 +121,10 @@ void BufOverflowDetector::handleStubFunctions(const SVF::CallICFGNode* callNode)
         // void SAFE_BUFACCESS(void* data, int size);
         AbstractInterpretation::getAEInstance().checkpoints.erase(callNode);
         if (callNode->arg_size() < 2)
+        {
+
             return;
+        }
         AbstractState& as =
             AbstractInterpretation::getAEInstance().getAbsStateFromTrace(
                 callNode);

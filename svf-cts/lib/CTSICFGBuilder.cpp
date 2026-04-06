@@ -739,7 +739,10 @@ bool CTSICFGBuilder::containsCall(TSNode node, CTSSourceFile* file) const
 void CTSICFGBuilder::recordStmtNode(TSNode node, CTSSourceFile* file, ICFGNode* icfgNode)
 {
     auto key = std::make_pair(file, ts_node_start_byte(node));
-    stmtToICFGNode[key] = icfgNode;
+    // Don't overwrite if a more specific mapping (e.g. call_expression) already exists
+    // at the same byte offset (expression_statement shares start_byte with its child)
+    if (stmtToICFGNode.find(key) == stmtToICFGNode.end())
+        stmtToICFGNode[key] = icfgNode;
 }
 
 void CTSICFGBuilder::setEdgeCondition(IntraCFGEdge* edge, const SVFVar* condVar, s64_t branchVal)
