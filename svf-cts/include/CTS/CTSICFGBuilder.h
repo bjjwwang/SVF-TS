@@ -71,10 +71,18 @@ public:
     /// Set branch condition on an IntraCFGEdge (needs friend access via ICFG)
     void setEdgeCondition(IntraCFGEdge* edge, const SVFVar* condVar, s64_t branchVal);
 
+    /// Resolve pending goto edges (call after processing each function)
+    void resolveGotos();
+
 private:
     CTSModuleSet* moduleSet;
     std::map<std::pair<CTSSourceFile*, uint32_t>, ICFGNode*> stmtToICFGNode;
     std::map<std::pair<CTSSourceFile*, uint32_t>, const SVFBasicBlock*> stmtToBB;
+
+    /// Label → ICFGNode mapping (per function, cleared after each function)
+    std::map<std::string, ICFGNode*> labelMap;
+    /// Pending goto edges: (gotoNode, labelName)
+    std::vector<std::pair<ICFGNode*, std::string>> pendingGotos;
 };
 
 } // namespace SVF

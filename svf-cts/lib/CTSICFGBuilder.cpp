@@ -148,6 +148,23 @@ void CTSICFGBuilder::buildFunctionICFG(CTSFunction* tsFunc)
     {
         addIntraEdge(entryNode, exitNode);
     }
+
+    // Resolve all goto → label edges for this function
+    resolveGotos();
+}
+
+void CTSICFGBuilder::resolveGotos()
+{
+    for (auto& pending : pendingGotos)
+    {
+        auto it = labelMap.find(pending.second);
+        if (it != labelMap.end())
+        {
+            addIntraEdge(pending.first, it->second);
+        }
+    }
+    pendingGotos.clear();
+    labelMap.clear();
 }
 
 CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processCompoundStmt(
@@ -212,6 +229,52 @@ CTSICFGBuilder::ICFGNodePair CTSICFGBuilder::processStatement(
     if (strcmp(type, "do_statement") == 0)
     {
         return processDoWhileStmt(stmt, file, func, bb);
+    }
+
+    // labeled_statement: "LABEL: stmt" — record label → ICFGNode mapping,
+    // then process the inner statement
+    if (strcmp(type, "labeled_statement") == 0)
+    {
+        // First named child is the label identifier, rest is the statement
+        TSNode labelNode = ts_node_child_by_field_name(stmt, "label", 5);
+        TSNode innerStmt = ts_node_child_by_field_name(stmt, "body", 4);
+        // Process inner statement first to get its ICFG node
+        ICFGNodePair innerResult = {nullptr, nullptr};
+        if (!ts_node_is_null(innerStmt))
+            innerResult = processStatement(innerStmt, file, func, bb);
+        // If no inner node, create a placeholder
+        if (!innerResult.first)
+        {
+            IntraICFGNode* node = addIntraICFGNode(bb, false);
+            const_cast<SVFBasicBlock*>(bb)->addICFGNode(node);
+            node->setSourceLoc(CTSParser::formatSourceLoc(stmt, file->getFilePath()));
+            innerResult = {node, node};
+        }
+        // Record label → first ICFG node mapping
+        if (!ts_node_is_null(labelNode))
+        {
+            std::string labelName = CTSParser::getNodeText(labelNode, file->getSource());
+            labelMap[labelName] = innerResult.first;
+        }
+        recordStmtNode(stmt, file, innerResult.first);
+        return innerResult;
+    }
+
+    // goto_statement: "goto LABEL;" — record a deferred edge to resolve later
+    if (strcmp(type, "goto_statement") == 0)
+    {
+        IntraICFGNode* gotoNode = addIntraICFGNode(bb, false);
+        const_cast<SVFBasicBlock*>(bb)->addICFGNode(gotoNode);
+        gotoNode->setSourceLoc(CTSParser::formatSourceLoc(stmt, file->getFilePath()));
+        recordStmtNode(stmt, file, gotoNode);
+
+        TSNode labelNode = ts_node_named_child(stmt, 0);
+        if (!ts_node_is_null(labelNode))
+        {
+            std::string labelName = CTSParser::getNodeText(labelNode, file->getSource());
+            pendingGotos.push_back({gotoNode, labelName});
+        }
+        return {gotoNode, gotoNode};
     }
 
     // Find ALL call_expressions in this statement (bottom-up: inner calls first)

@@ -760,6 +760,14 @@ void CTSSVFIRBuilder::processStatement(TSNode stmt, CTSSourceFile* file)
     {
         processCompoundStmt(stmt, file);
     }
+    else if (strcmp(type, "labeled_statement") == 0)
+    {
+        // Process the inner statement (skip the label itself)
+        TSNode innerStmt = ts_node_child_by_field_name(stmt, "body", 4);
+        if (!ts_node_is_null(innerStmt))
+            processStatement(innerStmt, file);
+    }
+    // goto_statement: no-op in SVFIR (edge already in ICFG)
 }
 
 void CTSSVFIRBuilder::processDeclaration(TSNode decl, CTSSourceFile* file)
