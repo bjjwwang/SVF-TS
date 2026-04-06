@@ -1987,10 +1987,55 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
         return result;
     }
 
-    // Sizeof expression
+    // Sizeof expression: sizeof(type) or sizeof(expr)
     if (strcmp(type, "sizeof_expression") == 0)
     {
-        return createConstIntNode(8, currentICFGNode); // Simplified
+        // Try to resolve the type/expression argument
+        TSNode arg = ts_node_named_child(expr, 0);
+        if (!ts_node_is_null(arg))
+        {
+            const char* argType = ts_node_type(arg);
+            // sizeof(type_descriptor) — e.g. sizeof(int), sizeof(char)
+            if (strcmp(argType, "type_descriptor") == 0 ||
+                strcmp(argType, "parenthesized_expression") == 0)
+            {
+                std::string argText = CTSParser::getNodeText(arg, file->getSource());
+                // Remove parens
+                if (argText.front() == '(') argText = argText.substr(1);
+                if (argText.back() == ')') argText.pop_back();
+                // Strip whitespace
+                while (!argText.empty() && argText.front() == ' ') argText.erase(0, 1);
+                while (!argText.empty() && argText.back() == ' ') argText.pop_back();
+
+                if (argText == "char" || argText == "unsigned char" || argText == "signed char" ||
+                    argText == "int8_t" || argText == "uint8_t")
+                    return createConstIntNode(1, currentICFGNode);
+                if (argText == "short" || argText == "unsigned short" ||
+                    argText == "int16_t" || argText == "uint16_t" || argText == "wchar_t")
+                    return createConstIntNode(2, currentICFGNode);
+                if (argText == "int" || argText == "unsigned int" || argText == "unsigned" ||
+                    argText == "int32_t" || argText == "uint32_t" || argText == "float")
+                    return createConstIntNode(4, currentICFGNode);
+                if (argText == "long" || argText == "unsigned long" || argText == "size_t" ||
+                    argText == "long long" || argText == "unsigned long long" ||
+                    argText == "int64_t" || argText == "uint64_t" || argText == "double" ||
+                    argText == "long int" || argText == "unsigned long int")
+                    return createConstIntNode(8, currentICFGNode);
+                // Pointer types
+                if (argText.find('*') != std::string::npos)
+                    return createConstIntNode(8, currentICFGNode);
+                // Struct: look up in struct defs
+                std::string structName = argText;
+                if (structName.find("struct ") == 0)
+                    structName = structName.substr(7);
+                CTSStructDef* sd = moduleSet->getStructDef(structName);
+                if (sd && sd->getSVFType())
+                    return createConstIntNode(
+                        sd->getSVFType()->getByteSize(), currentICFGNode);
+            }
+        }
+        // Default: 8 bytes (pointer size on 64-bit)
+        return createConstIntNode(8, currentICFGNode);
     }
 
     // Assignment expression (when used as rvalue)

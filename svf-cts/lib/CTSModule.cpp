@@ -32,12 +32,45 @@ CTSSourceFile::~CTSSourceFile()
 
 bool CTSSourceFile::parse()
 {
-    // Run C preprocessor to expand macros and process #include.
-    // -P: no line markers; -D__attribute__(x)=: strip GCC attributes
-    // We keep system include paths so stdbool.h etc. can be found.
-    std::string cmd = "cpp -P -DINCLUDEMAIN "
+    // Run C preprocessor to expand macros and local #include only.
+    // -nostdinc: skip real system headers (avoid complex GNU extensions)
+    // -isystem stubs: provide empty stubs so #include <stdio.h> doesn't fail
+    // -P: no line markers
+    std::string stubDir;
+    {
+        // Find stub headers relative to the executable or source tree
+        // Try common locations
+        std::vector<std::string> candidates = {
+            "svf-cts/include/CTS/stubs",
+            "../svf-cts/include/CTS/stubs",
+            "../../svf-cts/include/CTS/stubs",
+        };
+        for (const auto& c : candidates)
+        {
+            if (fs::exists(c + "/stdio.h"))
+            {
+                stubDir = c;
+                break;
+            }
+        }
+    }
+    std::string cmd = "cpp -P -nostdinc -DINCLUDEMAIN "
                       "-D'__attribute__(x)=' -D'__extension__=' "
-                      "-D'__builtin_va_list=void*' -D'__asm__(x)=' ";
+                      "-D'__builtin_va_list=void*' -D'__asm__(x)=' "
+                      "-Dsize_t='unsigned long' -Dwchar_t=int "
+                      "-Duint64_t='unsigned long' -Dint64_t=long "
+                      "-Duint32_t='unsigned int' -Dint32_t=int "
+                      "-Duint8_t='unsigned char' -Dint8_t='signed char' "
+                      "-Duint16_t='unsigned short' -Dint16_t=short "
+                      "-DINT_MAX=2147483647 -DINT_MIN='(-2147483647-1)' "
+                      "-DCHAR_MAX=127 -DCHAR_MIN='(-128)' "
+                      "-DSIZE_MAX='((unsigned long)-1)' "
+                      "-DRAND_MAX=2147483647 "
+                      "-DNULL='((void*)0)' "
+                      "-D_Bool=int -Dbool=int "
+                      "-Dtrue=1 -Dfalse=0 ";
+    if (!stubDir.empty())
+        cmd += "-isystem \"" + stubDir + "\" ";
     // Add include path from the source file's directory
     {
         size_t lastSlash = filePath.rfind('/');

@@ -1,0 +1,1 @@
+/* CTS stub for stddef.h */
