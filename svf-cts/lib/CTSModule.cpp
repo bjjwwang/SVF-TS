@@ -32,16 +32,51 @@ CTSSourceFile::~CTSSourceFile()
 
 bool CTSSourceFile::parse()
 {
-    std::ifstream file(filePath);
-    if (!file.is_open())
+    // Run C preprocessor to expand macros and process #include.
+    // -P: no line markers; -D__attribute__(x)=: strip GCC attributes
+    // We keep system include paths so stdbool.h etc. can be found.
+    std::string cmd = "cpp -P -D'__attribute__(x)=' -D'__extension__=' "
+                      "-D'__builtin_va_list=void*' -D'__asm__(x)=' "
+                      "\"" + filePath + "\" 2>/dev/null";
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (pipe)
     {
-        std::cerr << "Error: Cannot open file: " << filePath << std::endl;
-        return false;
+        std::stringstream buffer;
+        char buf[4096];
+        while (fgets(buf, sizeof(buf), pipe))
+            buffer << buf;
+        int status = pclose(pipe);
+        if (status == 0 && !buffer.str().empty())
+        {
+            source = buffer.str();
+        }
+        else
+        {
+            // Preprocessor failed — fall back to raw file
+            std::ifstream file(filePath);
+            if (!file.is_open())
+            {
+                std::cerr << "Error: Cannot open file: " << filePath << std::endl;
+                return false;
+            }
+            std::stringstream fb;
+            fb << file.rdbuf();
+            source = fb.str();
+        }
     }
-
-    std::stringstream buffer;
-    buffer << file.rdbuf();
-    source = buffer.str();
+    else
+    {
+        // popen failed — fall back to raw file
+        std::ifstream file(filePath);
+        if (!file.is_open())
+        {
+            std::cerr << "Error: Cannot open file: " << filePath << std::endl;
+            return false;
+        }
+        std::stringstream fb;
+        fb << file.rdbuf();
+        source = fb.str();
+    }
 
     tree = parser->parse(source);
     return tree != nullptr;

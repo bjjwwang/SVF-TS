@@ -1696,6 +1696,11 @@ NodeID CTSSVFIRBuilder::getExprValue(TSNode expr, CTSSourceFile* file)
         auto* varInfo = scopeManager->lookupVar(name);
         if (varInfo)
         {
+            // Array type: array name decays to pointer (address of first element).
+            // Return the address directly — no load. Same as &arr[0].
+            if (varInfo->type && SVFUtil::isa<SVFArrayType>(varInfo->type))
+                return varInfo->valNode;
+
             // Load the value from the variable's address
             NodeID result = createValNode(moduleSet->getPtrType(), currentICFGNode);
             addLoadEdge(varInfo->valNode, result);
